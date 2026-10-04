@@ -1,0 +1,165 @@
+{
+  "schema": "interlock.scenarios/v1",
+  "scenarios": [
+    {
+      "id": "01",
+      "slug": "normal-maintenance",
+      "title": "Normal maintenance change",
+      "summary": "A routine maintenance export: documentation edits, two non-safety logic tweaks, an equivalent reorder of the ESD rung and a strengthened overflow trip. Nothing needs a safety review.",
+      "kind": "compare",
+      "baseline": "l5x/baseline-safe.L5X",
+      "current": "l5x/current-normal.L5X",
+      "manifest": "manifests/northgate.safety.json",
+      "expected": "expected/01-normal-maintenance.json",
+      "highlights": [
+        "10 documentation edits, 4 logic edits",
+        "ESD rung reordered: proven equivalent",
+        "Overflow protection strengthened with a transmitter backup",
+        "Review priority: none"
+      ]
+    },
+    {
+      "id": "02",
+      "slug": "shutdown-weakened",
+      "title": "Compressor shutdown weakened by maintenance mode",
+      "summary": "One contact added to the C-201 high pressure shutdown rung lets an HMI-writable maintenance flag defeat the trip, and its alarm with it.",
+      "kind": "compare",
+      "baseline": "l5x/baseline-safe.L5X",
+      "current": "l5x/current-shutdown-weakened.L5X",
+      "manifest": "manifests/northgate.safety.json",
+      "expected": "expected/02-shutdown-weakened.json",
+      "highlights": [
+        "XIO(Maintenance_Mode) added to SF-06",
+        "Inhibit is writable from the HMI",
+        "Shutdown alarm silenced in the same cases"
+      ]
+    },
+    {
+      "id": "03",
+      "slug": "alarm-suppressed",
+      "title": "High-high level alarm suppressed",
+      "summary": "A \"temporary\" nuisance-alarm inhibit is wired into the T-101 high-high alarm. The overflow valve still closes; the control room is no longer told.",
+      "kind": "compare",
+      "baseline": "l5x/baseline-safe.L5X",
+      "current": "l5x/current-alarm-suppressed.L5X",
+      "manifest": "manifests/northgate.safety.json",
+      "expected": "expected/03-alarm-suppressed.json",
+      "highlights": [
+        "New Read/Write tag High_Level_Inhibit",
+        "Wired to the ALMD ProgDisable operand",
+        "Protective path SF-05 untouched"
+      ]
+    },
+    {
+      "id": "04",
+      "slug": "aoi-modified",
+      "title": "Shared pump interlock AOI modified",
+      "summary": "AOI_PumpInterlock gains an optional maintenance bypass that defeats every trip. One edit to one block reaches five pumps, three of them safety functions.",
+      "kind": "compare",
+      "baseline": "l5x/baseline-safe.L5X",
+      "current": "l5x/current-aoi-modified.L5X",
+      "manifest": "manifests/northgate.safety.json",
+      "expected": "expected/04-aoi-modified.json",
+      "highlights": [
+        "Revision 3.4 -> 3.5, new Maint_Bypass input",
+        "Blast radius: 5 instances, 3 safety-relevant",
+        "P-101 shutdown alarm silenced too"
+      ]
+    },
+    {
+      "id": "05",
+      "slug": "protective-bypass",
+      "title": "Protective output bypassed from non-safety code",
+      "summary": "A commissioning routine added to the non-safety Utilities program latches P-101's run enable on from the HMI, after the interlock has already decided.",
+      "kind": "compare",
+      "baseline": "l5x/baseline-safe.L5X",
+      "current": "l5x/current-protective-bypass.L5X",
+      "manifest": "manifests/northgate.safety.json",
+      "expected": "expected/05-protective-bypass.json",
+      "highlights": [
+        "New routine Utilities/Commissioning",
+        "OTL on a declared protective output",
+        "Runs after PumpControl in the same scan"
+      ]
+    },
+    {
+      "id": "06",
+      "slug": "undeclared-change",
+      "title": "Undeclared logic changed",
+      "summary": "Three edits in logic no safety function declares: seal water, sump and a pump alarm rung. INTERLOCK cannot call them safe, so it asks for review.",
+      "kind": "compare",
+      "baseline": "l5x/baseline-safe.L5X",
+      "current": "l5x/current-undeclared-change.L5X",
+      "manifest": "manifests/northgate.safety.json",
+      "expected": "expected/06-undeclared-change.json",
+      "highlights": [
+        "Seal water dry-run protection removed",
+        "P-105 shutdown alarm rung deleted",
+        "Trust: review required"
+      ]
+    },
+    {
+      "id": "07",
+      "slug": "site-drift",
+      "title": "AOI drift across three sites",
+      "summary": "The same pump interlock block at three stations: one edited in place without a revision bump, one two revisions behind, and a valve block only one site has.",
+      "kind": "drift",
+      "sites": [
+        {
+          "label": "Site A",
+          "name": "Northgate (Site A)",
+          "file": "l5x/site-a.L5X"
+        },
+        {
+          "label": "Site B",
+          "name": "Eastfield (Site B)",
+          "file": "l5x/site-b-drift.L5X"
+        },
+        {
+          "label": "Site C",
+          "name": "Riverbend (Site C)",
+          "file": "l5x/site-c-legacy.L5X"
+        }
+      ],
+      "manifest": "manifests/northgate.safety.json",
+      "expected": "expected/07-site-drift.json",
+      "highlights": [
+        "Site B: \"3.4\" without the motor over-temperature trip",
+        "Site C: revision 3.1, no ESD input",
+        "AOI_ValveCtl only at Site C"
+      ]
+    },
+    {
+      "id": "08",
+      "slug": "large-noisy",
+      "title": "Large noisy export with three logic changes",
+      "summary": "A 24-pump export with about 425 changes, almost all documentation and stored values. Three are logic, and one of them relaxes a safety setpoint.",
+      "kind": "compare",
+      "baseline": "l5x/baseline-large.L5X",
+      "current": "l5x/current-large.L5X",
+      "manifest": "manifests/northgate-large.safety.json",
+      "expected": "expected/08-large-noisy.json",
+      "highlights": [
+        "400 documentation edits, 20 value edits",
+        "Suction permissive 12 -> 8 psig",
+        "C-201 low suction trip delay 2 s -> 10 s (undeclared)"
+      ]
+    },
+    {
+      "id": "09",
+      "slug": "path-removed",
+      "title": "Protective paths removed",
+      "summary": "The fire panel trip is removed from the ESD and the P-103 routine is no longer called. Two protective paths disappear, and the ESD change reaches every pump.",
+      "kind": "compare",
+      "baseline": "l5x/baseline-safe.L5X",
+      "current": "l5x/current-path-removed.L5X",
+      "manifest": "manifests/northgate.safety.json",
+      "expected": "expected/09-path-removed.json",
+      "highlights": [
+        "Fire_Detected removed from SF-01",
+        "JSR(PUMP_03) deleted: SF-04 never executes",
+        "ESD change propagates to pumps and permissive"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1550 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="35.00" TargetName="NORTHGATE_PS" TargetType="Controller" ContainsContext="false" ExportDate="Tue Sep 29 11:28:44 2026" ExportOptions="NoRawData L5KData DecoratedData ForceProtectedEncoding AllProjDocTrans">
+<Controller Use="Target" Name="NORTHGATE_PS" ProcessorType="1756-L83E" MajorRev="35" MinorRev="11" TimeSlice="20" ShareUnusedTimeSlice="1" ProjectCreationDate="Mon Feb 12 09:02:11 2024" LastModifiedDate="Tue Sep 29 11:26:09 2026" SFCExecutionControl="CurrentActive" SFCRestartPosition="MostRecent" SFCLastScan="DontScan" ProjectSN="16#0000_0000" MatchProjectToController="false" CanUseRPIFromProducer="false" InhibitAutomaticFirmwareUpdate="0" PassThroughConfiguration="EnabledWithAppend" DownloadProjectDocumentationAndExtendedProperties="true" DownloadProjectCustomProperties="true" ReportMinorOverflow="false">
+<Description>
+<![CDATA[Northgate Pump Station PLC-1, wet well lift station. SYNTHETIC DEMONSTRATION PROJECT: fictional utility, no real site or equipment.]]>
+</Description>
+<RedundancyInfo Enabled="false" KeepTestEditsOnSwitchOver="false"/>
+<Security Code="0" ChangesToDetect="16#ffff_ffff_ffff_ffff"/>
+<SafetyInfo/>
+<DataTypes>
+<DataType Name="UDT_PumpStatus" Family="NoFamily" Class="User">
+<Description>
+<![CDATA[Pump status block for SCADA polling (reserved, not yet mapped)]]>
+</Description>
+<Members>
+<Member Name="ZZZZZZZZZZUDT_PumpSt0" DataType="SINT" Dimension="0" Radix="Decimal" Hidden="true" ExternalAccess="Read/Write"/>
+<Member Name="Running" DataType="BIT" Dimension="0" Radix="Decimal" Hidden="false" Target="ZZZZZZZZZZUDT_PumpSt0" BitNumber="0" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Run feedback from starter auxiliary contact]]>
+</Description>
+</Member>
+<Member Name="Faulted" DataType="BIT" Dimension="0" Radix="Decimal" Hidden="false" Target="ZZZZZZZZZZUDT_PumpSt0" BitNumber="1" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Any protective trip]]>
+</Description>
+</Member>
+<Member Name="In_Auto" DataType="BIT" Dimension="0" Radix="Decimal" Hidden="false" Target="ZZZZZZZZZZUDT_PumpSt0" BitNumber="2" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[HOA switch in AUTO]]>
+</Description>
+</Member>
+<Member Name="Run_Hours" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Accumulated run hours]]>
+</Description>
+</Member>
+<Member Name="Starts" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Starts since midnight]]>
+</Description>
+</Member>
+</Members>
+</DataType>
+</DataTypes>
+<Modules>
+<Module Name="Local" CatalogNumber="1756-L83E" Vendor="1" ProductType="14" ProductCode="166" Major="35" Minor="11" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="true">
+<EKey State="Disabled"/>
+<Ports>
+<Port Id="1" Address="0" Type="ICP" Upstream="false">
+<Bus Size="10"/>
+</Port>
+<Port Id="2" Address="192.168.10.10" Type="Ethernet" Upstream="false">
+<Bus/>
+</Port>
+</Ports>
+</Module>
+<Module Name="DI_Slot3" CatalogNumber="1756-IB16/A" Vendor="1" ProductType="7" ProductCode="10" Major="3" Minor="1" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="false">
+<Description>
+<![CDATA[Station discrete inputs: wet well floats, pressure switches, fire panel relay]]>
+</Description>
+<EKey State="CompatibleModule"/>
+<Ports>
+<Port Id="1" Address="3" Type="ICP" Upstream="true"/>
+</Ports>
+</Module>
+<Module Name="AI_Slot5" CatalogNumber="1756-IF8/A" Vendor="1" ProductType="10" ProductCode="9" Major="1" Minor="3" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="false">
+<Description>
+<![CDATA[Analog inputs: LT-101, PT-110, PT-201S]]>
+</Description>
+<EKey State="CompatibleModule"/>
+<Ports>
+<Port Id="1" Address="5" Type="ICP" Upstream="true"/>
+</Ports>
+</Module>
+<Module Name="DO_Slot7" CatalogNumber="1756-OB16E/A" Vendor="1" ProductType="7" ProductCode="20" Major="3" Minor="1" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="false">
+<Description>
+<![CDATA[Discrete outputs: MCC run enables, XV-101, SV-104, horn]]>
+</Description>
+<EKey State="CompatibleModule"/>
+<Ports>
+<Port Id="1" Address="7" Type="ICP" Upstream="true"/>
+</Ports>
+</Module>
+</Modules>
+<AddOnInstructionDefinitions>
+<AddOnInstructionDefinition Name="AOI_PumpInterlock" Revision="3.4" ExecutePrescan="false" ExecutePostscan="false" ExecuteEnableInFalse="false" CreatedDate="2019-04-08T13:20:41.517Z" CreatedBy="NWA\controls" EditedDate="2026-03-02T10:41:05.880Z" EditedBy="NWA\controls" SoftwareRevision="v35.00" Vendor="Northgate Water Authority">
+<Description>
+<![CDATA[Wet well pump protection interlock. Any trip cause drops Run_Enable to the MCC starter; Shutdown_Alarm follows the trip for HMI annunciation. Standard NWA pump block, do not edit at site level.]]>
+</Description>
+<RevisionNote>
+<![CDATA[3.4 adds ESD_Active input so a station ESD trips every pump through the block (MOC-2024-017).]]>
+</RevisionNote>
+<Parameters>
+<Parameter Name="EnableIn" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="false" Visible="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Enable Input - System Defined Parameter]]>
+</Description>
+</Parameter>
+<Parameter Name="EnableOut" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="false" Visible="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Enable Output - System Defined Parameter]]>
+</Description>
+</Parameter>
+<Parameter Name="Run_Request" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Run request from lead/lag sequencer or HMI hand start]]>
+</Description>
+<DefaultData Format="L5K">
+<![CDATA[0]]>
+</DefaultData>
+<DefaultData Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</DefaultData>
+</Parameter>
+<Parameter Name="Level_HH" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Wet well level high-high (trip)]]>
+</Description>
+<DefaultData Format="L5K">
+<![CDATA[0]]>
+</DefaultData>
+<DefaultData Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</DefaultData>
+</Parameter>
+<Parameter Name="Press_Trip" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Pressure trip: discharge high or suction low, per pump (trip)]]>
+</Description>
+<DefaultData Format="L5K">
+<![CDATA[0]]>
+</DefaultData>
+<DefaultData Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</DefaultData>
+</Parameter>
+<Parameter Name="Motor_Temp_Hi" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Motor winding over-temperature relay (trip)]]>
+</Description>
+<DefaultData Format="L5K">
+<![CDATA[0]]>
+</DefaultData>
+<DefaultData Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</DefaultData>
+</Parameter>
+<Parameter Name="ESD_Active" TagType="Base" DataType="BOOL" Usage="Input" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Station emergency shutdown active (trip)]]>
+</Description>
+<DefaultData Format="L5K">
+<![CDATA[0]]>
+</DefaultData>
+<DefaultData Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</DefaultData>
+</Parameter>
+<Parameter Name="Run_Enable" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="true" Visible="true" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Run enable to MCC starter. 0 = pump stopped/blocked]]>
+</Description>
+<DefaultData Format="L5K">
+<![CDATA[0]]>
+</DefaultData>
+<DefaultData Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</DefaultData>
+</Parameter>
+<Parameter Name="Shutdown_Alarm" TagType="Base" DataType="BOOL" Usage="Output" Radix="Decimal" Required="false" Visible="true" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Protective shutdown alarm to HMI]]>
+</Description>
+<DefaultData Format="L5K">
+<![CDATA[0]]>
+</DefaultData>
+<DefaultData Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</DefaultData>
+</Parameter>
+</Parameters>
+<LocalTags>
+<LocalTag Name="Trip" DataType="BOOL" Radix="Decimal" ExternalAccess="None">
+<Description>
+<![CDATA[Any trip cause present]]>
+</Description>
+<DefaultData Format="L5K">
+<![CDATA[0]]>
+</DefaultData>
+<DefaultData Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</DefaultData>
+</LocalTag>
+</LocalTags>
+<Routines>
+<Routine Name="Logic" Type="RLL">
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[Any trip cause sets Trip. Non-latching: the MCC starter drops out and the sequencer must re-request once the cause clears.]]>
+</Comment>
+<Text>
+<![CDATA[[XIC(Level_HH) ,XIC(Press_Trip) ,XIC(Motor_Temp_Hi) ,XIC(ESD_Active) ]OTE(Trip);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[Run enable: requested and no trip present.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Run_Request)XIO(Trip)OTE(Run_Enable);]]>
+</Text>
+</Rung>
+<Rung Number="2" Type="N">
+<Comment>
+<![CDATA[Shutdown alarm follows the trip.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Trip)OTE(Shutdown_Alarm);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</AddOnInstructionDefinition>
+</AddOnInstructionDefinitions>
+<Tags>
+<Tag Name="EStop_Healthy" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[E-stop loop healthy: ES-1 to ES-4 in series through safety relay SR-1 (1 = healthy)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="ESD_Remote_Cmd" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Remote ESD pushbutton at gatehouse, hardwired (1 = ESD demanded)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Fire_Detected" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Fire alarm panel FACP-1 general alarm relay (1 = fire)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="LSHH_101" TagType="Alias" Radix="Decimal" AliasFor="Local:3:I.Data.4" ExternalAccess="Read Only">
+<Description>
+<![CDATA[T-101 wet well level high-high float LSHH-101 (1 = high-high)]]>
+</Description>
+</Tag>
+<Tag Name="LT101_PV" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[T-101 wet well level LT-101 (% of span)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[4.17000000e+001]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="REAL" Radix="Float" Value="41.7"/>
+</Data>
+</Tag>
+<Tag Name="Suction_Press_PV" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Pump suction header pressure PT-110 (psig)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1.84000000e+001]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="REAL" Radix="Float" Value="18.4"/>
+</Data>
+</Tag>
+<Tag Name="MCC_Main_Enable" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[MCC-1 main enable (de-energize to trip every pump starter)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="ESD_Active" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Station ESD active, to pump interlocks and SCADA]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="XV101_Close_Cmd" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[XV-101 wet well inlet valve close command (energize to close)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_Start_Permissive" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Station pump start permissive to lead/lag sequencer]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="Maintenance_Mode" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Station maintenance mode selected at HMI]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Safety_Enable" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Station safety functions armed (HMI, supervisor level)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="Pump_01_Run_Request" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-101 run request from lead/lag sequencer or HMI hand start]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="Pump_01_Disch_Press_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-101 discharge pressure high, PSH-101 (1 = high, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_01_Motor_Temp_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-101 motor winding over-temperature relay TSH-101 (1 = hot, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_01_Run_Enable" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-101 run enable to MCC-1 cubicle 1A (de-energize to stop)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="Pump_01_Shutdown_Alarm" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-101 protective shutdown alarm to HMI]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="PUMP_01_IL" TagType="Base" DataType="AOI_PumpInterlock" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-101 protection interlock instance]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[[1,0]]]>
+</Data>
+<Data Format="Decorated">
+<Structure DataType="AOI_PumpInterlock">
+<DataValueMember Name="EnableIn" DataType="BOOL" Value="1"/>
+<DataValueMember Name="EnableOut" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Request" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Level_HH" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Press_Trip" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Motor_Temp_Hi" DataType="BOOL" Value="0"/>
+<DataValueMember Name="ESD_Active" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Enable" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Shutdown_Alarm" DataType="BOOL" Value="0"/>
+</Structure>
+</Data>
+</Tag>
+<Tag Name="Pump_02_Run_Request" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-102 run request from lead/lag sequencer or HMI hand start]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="Pump_02_Disch_Press_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-102 discharge pressure high, PSH-102 (1 = high, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_02_Motor_Temp_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-102 motor winding over-temperature relay TSH-102 (1 = hot, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_02_Run_Enable" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-102 run enable to MCC-1 cubicle 2A (de-energize to stop)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="Pump_02_Shutdown_Alarm" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-102 protective shutdown alarm to HMI]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="PUMP_02_IL" TagType="Base" DataType="AOI_PumpInterlock" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-102 protection interlock instance]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[[1,0]]]>
+</Data>
+<Data Format="Decorated">
+<Structure DataType="AOI_PumpInterlock">
+<DataValueMember Name="EnableIn" DataType="BOOL" Value="1"/>
+<DataValueMember Name="EnableOut" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Request" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Level_HH" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Press_Trip" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Motor_Temp_Hi" DataType="BOOL" Value="0"/>
+<DataValueMember Name="ESD_Active" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Enable" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Shutdown_Alarm" DataType="BOOL" Value="0"/>
+</Structure>
+</Data>
+</Tag>
+<Tag Name="Pump_03_Run_Request" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-103 run request from lead/lag sequencer or HMI hand start]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_03_Suction_Low" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-103 suction pressure low, PSL-103 (1 = low, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_03_Motor_Temp_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-103 motor winding over-temperature relay TSH-103 (1 = hot, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_03_Run_Enable" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-103 run enable to MCC-1 cubicle 3A (de-energize to stop)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_03_Shutdown_Alarm" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-103 protective shutdown alarm to HMI]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="PUMP_03_IL" TagType="Base" DataType="AOI_PumpInterlock" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-103 protection interlock instance]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[[1,0]]]>
+</Data>
+<Data Format="Decorated">
+<Structure DataType="AOI_PumpInterlock">
+<DataValueMember Name="EnableIn" DataType="BOOL" Value="1"/>
+<DataValueMember Name="EnableOut" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Request" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Level_HH" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Press_Trip" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Motor_Temp_Hi" DataType="BOOL" Value="0"/>
+<DataValueMember Name="ESD_Active" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Enable" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Shutdown_Alarm" DataType="BOOL" Value="0"/>
+</Structure>
+</Data>
+</Tag>
+<Tag Name="Pump_04_Run_Request" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-104 run request from lead/lag sequencer or HMI hand start]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_04_Disch_Press_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-104 discharge pressure high, PSH-104 (1 = high, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_04_Motor_Temp_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-104 motor winding over-temperature relay TSH-104 (1 = hot, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_04_Run_Enable" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-104 run enable to MCC-1 cubicle 4A (de-energize to stop)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_04_Shutdown_Alarm" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-104 protective shutdown alarm to HMI]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="PUMP_04_IL" TagType="Base" DataType="AOI_PumpInterlock" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-104 protection interlock instance]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[[1,0]]]>
+</Data>
+<Data Format="Decorated">
+<Structure DataType="AOI_PumpInterlock">
+<DataValueMember Name="EnableIn" DataType="BOOL" Value="1"/>
+<DataValueMember Name="EnableOut" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Request" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Level_HH" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Press_Trip" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Motor_Temp_Hi" DataType="BOOL" Value="0"/>
+<DataValueMember Name="ESD_Active" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Enable" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Shutdown_Alarm" DataType="BOOL" Value="0"/>
+</Structure>
+</Data>
+</Tag>
+<Tag Name="Pump_05_Run_Request" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-105 run request from lead/lag sequencer or HMI hand start]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_05_Disch_Press_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-105 discharge pressure high, PSH-105 (1 = high, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_05_Motor_Temp_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-105 motor winding over-temperature relay TSH-105 (1 = hot, trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_05_Run_Enable" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-105 run enable to MCC-1 cubicle 5A (de-energize to stop)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_05_Shutdown_Alarm" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[P-105 protective shutdown alarm to HMI]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="PUMP_05_IL" TagType="Base" DataType="AOI_PumpInterlock" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-105 protection interlock instance]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[[1,0]]]>
+</Data>
+<Data Format="Decorated">
+<Structure DataType="AOI_PumpInterlock">
+<DataValueMember Name="EnableIn" DataType="BOOL" Value="1"/>
+<DataValueMember Name="EnableOut" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Request" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Level_HH" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Press_Trip" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Motor_Temp_Hi" DataType="BOOL" Value="0"/>
+<DataValueMember Name="ESD_Active" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Run_Enable" DataType="BOOL" Value="0"/>
+<DataValueMember Name="Shutdown_Alarm" DataType="BOOL" Value="0"/>
+</Structure>
+</Data>
+</Tag>
+<Tag Name="PT201_High" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[C-201 receiver pressure high PSH-201, set 125 psig (1 = high)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="C201_Run_Cmd" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[C-201 run command from HMI]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="C201_Suction_PV" TagType="Base" DataType="REAL" Radix="Float" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[C-201 suction pressure PT-201S (psig)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[5.20000000e+000]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="REAL" Radix="Float" Value="5.2"/>
+</Data>
+</Tag>
+<Tag Name="C201_Shutdown_Cmd" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[C-201 high pressure shutdown command (energize to trip)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="C201_Motor_Run" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[C-201 motor run output to starter M-201]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[1]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="1"/>
+</Data>
+</Tag>
+<Tag Name="C201_LP_Delay" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[C-201 low suction pressure trip delay]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[[0,2000,0]]]>
+</Data>
+<Data Format="Decorated">
+<Structure DataType="TIMER">
+<DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="2000"/>
+<DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0"/>
+<DataValueMember Name="EN" DataType="BOOL" Value="0"/>
+<DataValueMember Name="TT" DataType="BOOL" Value="0"/>
+<DataValueMember Name="DN" DataType="BOOL" Value="0"/>
+</Structure>
+</Data>
+</Tag>
+<Tag Name="C201_Low_Press_Trip" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[C-201 low suction pressure trip]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="LT101_HH_Alm" TagType="Base" DataType="ALARM_DIGITAL" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[T-101 high-high level alarm (HMI alarm summary)]]>
+</Description>
+<Data Format="Alarm">
+<AlarmDigitalParameters Severity="900" MinDurationPRE="0" ShelveDuration="0" MaxShelveDuration="0" ProgTime="DT#1970-01-01-00:00:00.000_000Z" EnableIn="false" In="false" InFault="false" Condition="true" AckRequired="true" Latched="false" ProgAck="false" OperAck="false" ProgReset="false" OperReset="false" ProgSuppress="false" OperSuppress="false" ProgUnsuppress="false" OperUnsuppress="false" OperShelve="false" ProgUnshelve="false" OperUnshelve="false" ProgDisable="false" OperDisable="false" ProgEnable="false" OperEnable="false" AlarmCountReset="false" UseProgTime="false"/>
+<AlarmConfig>
+<Messages>
+<Message Type="AM">
+<Text Lang="en-US"><![CDATA[Tank T-101 level high-high]]></Text>
+</Message>
+</Messages>
+</AlarmConfig>
+</Data>
+</Tag>
+<Tag Name="C201_Shutdown_Alm" TagType="Base" DataType="ALARM_DIGITAL" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[C-201 high pressure shutdown alarm (HMI alarm summary)]]>
+</Description>
+<Data Format="Alarm">
+<AlarmDigitalParameters Severity="800" MinDurationPRE="0" ShelveDuration="0" MaxShelveDuration="0" ProgTime="DT#1970-01-01-00:00:00.000_000Z" EnableIn="false" In="false" InFault="false" Condition="true" AckRequired="true" Latched="false" ProgAck="false" OperAck="false" ProgReset="false" OperReset="false" ProgSuppress="false" OperSuppress="false" ProgUnsuppress="false" OperUnsuppress="false" OperShelve="false" ProgUnshelve="false" OperUnshelve="false" ProgDisable="false" OperDisable="false" ProgEnable="false" OperEnable="false" AlarmCountReset="false" UseProgTime="false"/>
+<AlarmConfig>
+<Messages>
+<Message Type="AM">
+<Text Lang="en-US"><![CDATA[Compressor C-201 high pressure shutdown]]></Text>
+</Message>
+</Messages>
+</AlarmConfig>
+</Data>
+</Tag>
+<Tag Name="ESD_Trip_Horn" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Control room ESD horn and beacon AH-1]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Seal_Water_Low" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Seal water tank low level LSL-104 (1 = low)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Seal_Water_Valve_Open" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Seal water solenoid SV-104 open command (P-104)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Sump_Level_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Drywell sump high level LSH-120]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Sump_Pump_Run" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Drywell sump pump SP-1 run]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Dusk_Sensor" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Yard photocell PE-1 (1 = dark)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Building_Temp_Hi" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Pump room temperature high TSH-130]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Panel_Light_Maint" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Maintenance mode lamp on control panel CP-1]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Yard_Lights" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Yard lighting contactor LC-1]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Exhaust_Fan_Run" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Pump room exhaust fan EF-1 run]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+<Tag Name="Pump_01_Hours" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-101 run-hour accumulator (RTO, 1 h base)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[[0,3600000,0]]]>
+</Data>
+<Data Format="Decorated">
+<Structure DataType="TIMER">
+<DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="3600000"/>
+<DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0"/>
+<DataValueMember Name="EN" DataType="BOOL" Value="0"/>
+<DataValueMember Name="TT" DataType="BOOL" Value="0"/>
+<DataValueMember Name="DN" DataType="BOOL" Value="0"/>
+</Structure>
+</Data>
+</Tag>
+<Tag Name="Pump_02_Hours" TagType="Base" DataType="TIMER" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[P-102 run-hour accumulator (RTO, 1 h base)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[[0,3600000,0]]]>
+</Data>
+<Data Format="Decorated">
+<Structure DataType="TIMER">
+<DataValueMember Name="PRE" DataType="DINT" Radix="Decimal" Value="3600000"/>
+<DataValueMember Name="ACC" DataType="DINT" Radix="Decimal" Value="0"/>
+<DataValueMember Name="EN" DataType="BOOL" Value="0"/>
+<DataValueMember Name="TT" DataType="BOOL" Value="0"/>
+<DataValueMember Name="DN" DataType="BOOL" Value="0"/>
+</Structure>
+</Data>
+</Tag>
+<Tag Name="Sump_Pump_Fault" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[Drywell sump pump SP-1 overload relay (1 = fault)]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+</Tags>
+<Programs>
+<Program Name="Safety" TestEdits="false" MainRoutineName="Main" Disabled="false" UseAsFolder="false">
+<Description>
+<![CDATA[Station protective functions: ESD, T-101 overflow protection, pump start permissive. Any change requires MOC and functional test per NWA-ENG-014.]]>
+</Description>
+<Tags/>
+<Routines>
+<Routine Name="Main" Type="RLL">
+<Description>
+<![CDATA[Protective function dispatcher]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[Emergency shutdown chain.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(ESD,0);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[Wet well T-101 overflow protection.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(Overflow,0);]]>
+</Text>
+</Rung>
+<Rung Number="2" Type="N">
+<Comment>
+<![CDATA[Station pump start permissive.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(Permissives,0);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="ESD" Type="RLL">
+<Description>
+<![CDATA[Emergency shutdown (SF-01)]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[MCC-1 main enable. Drops on loss of the E-stop loop (ES-1..ES-4 via SR-1), remote ESD from the gatehouse, or fire panel FACP-1 alarm. De-energize to trip.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(EStop_Healthy)XIO(ESD_Remote_Cmd)XIO(Fire_Detected)OTE(MCC_Main_Enable);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[ESD active status to every pump interlock and to SCADA.]]>
+</Comment>
+<Text>
+<![CDATA[XIO(MCC_Main_Enable)OTE(ESD_Active);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Overflow" Type="RLL">
+<Description>
+<![CDATA[T-101 overflow protection (SF-05)]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[LSHH-101 closes inlet valve XV-101 (energize to close). Hardwired float, independent of the LT-101 transmitter.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(LSHH_101)OTE(XV101_Close_Cmd);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Permissives" Type="RLL">
+<Description>
+<![CDATA[Pump start permissive (SF-08)]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[Pumps may start only with MCC-1 enabled, wet well below high-high, and suction header above 12 psig (NPSH margin).]]>
+</Comment>
+<Text>
+<![CDATA[XIC(MCC_Main_Enable)XIO(LSHH_101)GRT(Suction_Press_PV,12.0)OTE(Pump_Start_Permissive);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+<Program Name="PumpControl" TestEdits="false" MainRoutineName="Main" Disabled="false" UseAsFolder="false">
+<Description>
+<![CDATA[Wet well pumps P-101 to P-105: one AOI_PumpInterlock instance per pump, run enable to the MCC.]]>
+</Description>
+<Tags/>
+<Routines>
+<Routine Name="Main" Type="RLL">
+<Description>
+<![CDATA[Pump routine dispatcher]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[P-101 interlock and control.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(PUMP_01,0);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[P-102 interlock and control.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(PUMP_02,0);]]>
+</Text>
+</Rung>
+<Rung Number="2" Type="N">
+<Comment>
+<![CDATA[P-103 interlock and control.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(PUMP_03,0);]]>
+</Text>
+</Rung>
+<Rung Number="3" Type="N">
+<Comment>
+<![CDATA[P-104 interlock and control.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(PUMP_04,0);]]>
+</Text>
+</Rung>
+<Rung Number="4" Type="N">
+<Comment>
+<![CDATA[P-105 interlock and control.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(PUMP_05,0);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="PUMP_01" Type="RLL">
+<Description>
+<![CDATA[P-101 wet well pump control]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[P-101 protection interlock. Trips on LSHH-101, discharge pressure high (PSH-101), motor over-temperature (TSH-101) or station ESD. Run enable hardwired to MCC-1 cubicle 1A.]]>
+</Comment>
+<Text>
+<![CDATA[AOI_PumpInterlock(PUMP_01_IL,Pump_01_Run_Request,LSHH_101,Pump_01_Disch_Press_Hi,Pump_01_Motor_Temp_Hi,ESD_Active,Pump_01_Run_Enable);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[P-101 protective shutdown alarm to HMI alarm summary.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(PUMP_01_IL.Shutdown_Alarm)OTE(Pump_01_Shutdown_Alarm);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="PUMP_02" Type="RLL">
+<Description>
+<![CDATA[P-102 wet well pump control]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[P-102 protection interlock. Trips on LSHH-101, discharge pressure high (PSH-102), motor over-temperature (TSH-102) or station ESD. Run enable hardwired to MCC-1 cubicle 2A.]]>
+</Comment>
+<Text>
+<![CDATA[AOI_PumpInterlock(PUMP_02_IL,Pump_02_Run_Request,LSHH_101,Pump_02_Disch_Press_Hi,Pump_02_Motor_Temp_Hi,ESD_Active,Pump_02_Run_Enable);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[P-102 protective shutdown alarm to HMI alarm summary.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(PUMP_02_IL.Shutdown_Alarm)OTE(Pump_02_Shutdown_Alarm);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="PUMP_03" Type="RLL">
+<Description>
+<![CDATA[P-103 wet well pump control]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[P-103 protection interlock. Trips on LSHH-101, suction pressure low (PSL-103), motor over-temperature (TSH-103) or station ESD. Run enable hardwired to MCC-1 cubicle 3A.]]>
+</Comment>
+<Text>
+<![CDATA[AOI_PumpInterlock(PUMP_03_IL,Pump_03_Run_Request,LSHH_101,Pump_03_Suction_Low,Pump_03_Motor_Temp_Hi,ESD_Active,Pump_03_Run_Enable);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[P-103 protective shutdown alarm to HMI alarm summary.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(PUMP_03_IL.Shutdown_Alarm)OTE(Pump_03_Shutdown_Alarm);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="PUMP_04" Type="RLL">
+<Description>
+<![CDATA[P-104 wet well pump control]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[P-104 protection interlock. Trips on LSHH-101, discharge pressure high (PSH-104), motor over-temperature (TSH-104) or station ESD. Run enable hardwired to MCC-1 cubicle 4A.]]>
+</Comment>
+<Text>
+<![CDATA[AOI_PumpInterlock(PUMP_04_IL,Pump_04_Run_Request,LSHH_101,Pump_04_Disch_Press_Hi,Pump_04_Motor_Temp_Hi,ESD_Active,Pump_04_Run_Enable);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[P-104 protective shutdown alarm to HMI alarm summary.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(PUMP_04_IL.Shutdown_Alarm)OTE(Pump_04_Shutdown_Alarm);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="PUMP_05" Type="RLL">
+<Description>
+<![CDATA[P-105 wet well pump control]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[P-105 protection interlock. Trips on LSHH-101, discharge pressure high (PSH-105), motor over-temperature (TSH-105) or station ESD. Run enable hardwired to MCC-1 cubicle 5A.]]>
+</Comment>
+<Text>
+<![CDATA[AOI_PumpInterlock(PUMP_05_IL,Pump_05_Run_Request,LSHH_101,Pump_05_Disch_Press_Hi,Pump_05_Motor_Temp_Hi,ESD_Active,Pump_05_Run_Enable);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+<Program Name="Compressor" TestEdits="false" MainRoutineName="Main" Disabled="false" UseAsFolder="false">
+<Description>
+<![CDATA[Air compressor C-201 (bubbler and instrument air): high pressure shutdown, low suction trip.]]>
+</Description>
+<Tags/>
+<Routines>
+<Routine Name="Main" Type="RLL">
+<Description>
+<![CDATA[C-201 control and protection (SF-06)]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[C-201 high pressure shutdown. PSH-201 trips the compressor while station safety functions are armed.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(PT201_High)XIC(Safety_Enable)OTE(C201_Shutdown_Cmd);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[C-201 motor run: operator run command, blocked while the shutdown is active.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(C201_Run_Cmd)XIO(C201_Shutdown_Cmd)OTE(C201_Motor_Run);]]>
+</Text>
+</Rung>
+<Rung Number="2" Type="N">
+<Comment>
+<![CDATA[Low suction pressure: 2 s filter on PT-201S below 3.5 psig.]]>
+</Comment>
+<Text>
+<![CDATA[LES(C201_Suction_PV,3.5)TON(C201_LP_Delay,2000,0);]]>
+</Text>
+</Rung>
+<Rung Number="3" Type="N">
+<Comment>
+<![CDATA[C-201 low suction trip after delay.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(C201_LP_Delay.DN)OTE(C201_Low_Press_Trip);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+<Program Name="Alarms" TestEdits="false" MainRoutineName="Main" Disabled="false" UseAsFolder="false">
+<Description>
+<![CDATA[Annunciation to the HMI alarm summary and the control room horn.]]>
+</Description>
+<Tags/>
+<Routines>
+<Routine Name="Main" Type="RLL">
+<Description>
+<![CDATA[Station alarms (SF-07)]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[T-101 high-high level alarm from LSHH-101 to HMI alarm summary, severity 900 (urgent).]]>
+</Comment>
+<Text>
+<![CDATA[XIC(LSHH_101)ALMD(LT101_HH_Alm,0,0,0,0);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[C-201 high pressure shutdown alarm.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(C201_Shutdown_Cmd)ALMD(C201_Shutdown_Alm,0,0,0,0);]]>
+</Text>
+</Rung>
+<Rung Number="2" Type="N">
+<Comment>
+<![CDATA[Control room horn and beacon AH-1 while MCC-1 is tripped.]]>
+</Comment>
+<Text>
+<![CDATA[XIO(MCC_Main_Enable)OTE(ESD_Trip_Horn);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+<Program Name="Auxiliary" TestEdits="false" MainRoutineName="Main" Disabled="false" UseAsFolder="false">
+<Description>
+<![CDATA[Station auxiliaries: P-104 seal water, drywell sump.]]>
+</Description>
+<Tags/>
+<Routines>
+<Routine Name="Main" Type="RLL">
+<Description>
+<![CDATA[Auxiliaries dispatcher]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[P-104 seal water.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(SealWater,0);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[Drywell sump.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(Sump,0);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="SealWater" Type="RLL">
+<Description>
+<![CDATA[P-104 seal water supply]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[Seal water solenoid SV-104 opens while P-104 runs. Held closed on seal water tank low level (LSL-104) so the booster does not run dry.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Pump_04_Run_Enable)OTE(Seal_Water_Valve_Open);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Sump" Type="RLL">
+<Description>
+<![CDATA[Drywell sump pump SP-1]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[Drywell sump pump SP-1 runs on sump high level LSH-120.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Sump_Level_Hi)XIO(Sump_Pump_Fault)OTE(Sump_Pump_Run);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+<Program Name="Utilities" TestEdits="false" MainRoutineName="Main" Disabled="false" UseAsFolder="false">
+<Description>
+<![CDATA[Building services: lighting and HVAC. Declared non-safety.]]>
+</Description>
+<Tags>
+<Tag Name="Lamp_Test" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+<Description>
+<![CDATA[Control panel CP-1 lamp test pushbutton]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+<Data Format="Decorated">
+<DataValue DataType="BOOL" Radix="Decimal" Value="0"/>
+</Data>
+</Tag>
+</Tags>
+<Routines>
+<Routine Name="Main" Type="RLL">
+<Description>
+<![CDATA[Building services dispatcher]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[Panel and yard lighting.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(Lighting,0);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[Pump room ventilation.]]>
+</Comment>
+<Text>
+<![CDATA[JSR(HVAC,0);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="Lighting" Type="RLL">
+<Description>
+<![CDATA[Panel and yard lighting]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[Maintenance mode lamp on CP-1.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Maintenance_Mode)OTE(Panel_Light_Maint);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[Yard lights on photocell PE-1.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Dusk_Sensor)OTE(Yard_Lights);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+<Routine Name="HVAC" Type="RLL">
+<Description>
+<![CDATA[Pump room ventilation]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[Exhaust fan EF-1 on pump room high temperature.]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Building_Temp_Hi)OTE(Exhaust_Fan_Run);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+<Program Name="Reporting" TestEdits="false" MainRoutineName="Main" Disabled="false" UseAsFolder="false">
+<Description>
+<![CDATA[Run hours for the SCADA historian. Declared non-safety.]]>
+</Description>
+<Tags/>
+<Routines>
+<Routine Name="Main" Type="RLL">
+<Description>
+<![CDATA[Run-hour accumulation]]>
+</Description>
+<RLLContent>
+<Rung Number="0" Type="N">
+<Comment>
+<![CDATA[P-101 run hours (RTO, 1 h base, rolled over by historian).]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Pump_01_Run_Enable)RTO(Pump_01_Hours,3600000,0);]]>
+</Text>
+</Rung>
+<Rung Number="1" Type="N">
+<Comment>
+<![CDATA[P-102 run hours (RTO, 1 h base, rolled over by historian).]]>
+</Comment>
+<Text>
+<![CDATA[XIC(Pump_02_Run_Enable)RTO(Pump_02_Hours,3600000,0);]]>
+</Text>
+</Rung>
+</RLLContent>
+</Routine>
+</Routines>
+</Program>
+</Programs>
+<Tasks>
+<Task Name="MainTask" Type="CONTINUOUS" Priority="10" Watchdog="500" DisableUpdateOutputs="false" InhibitTask="false">
+<Description>
+<![CDATA[Continuous scan: protective functions first, then pumps, compressor, alarms and station services.]]>
+</Description>
+<ScheduledPrograms>
+<ScheduledProgram Name="Safety"/>
+<ScheduledProgram Name="PumpControl"/>
+<ScheduledProgram Name="Compressor"/>
+<ScheduledProgram Name="Alarms"/>
+<ScheduledProgram Name="Auxiliary"/>
+<ScheduledProgram Name="Utilities"/>
+</ScheduledPrograms>
+</Task>
+<Task Name="Slow_100ms" Type="PERIODIC" Rate="100" Priority="12" Watchdog="500" DisableUpdateOutputs="false" InhibitTask="false">
+<Description>
+<![CDATA[100 ms periodic: run hours and totals for the SCADA historian.]]>
+</Description>
+<ScheduledPrograms>
+<ScheduledProgram Name="Reporting"/>
+</ScheduledPrograms>
+</Task>
+</Tasks>
+<CST MasterID="0"/>
+<WallClockTime LocalTimeAdjustment="0" TimeZone="0"/>
+<Trends/>
+<DataLogs/>
+<TimeSynchronize Priority1="128" Priority2="128" PTPEnable="false"/>
+<EthernetPorts>
+<EthernetPort Port="1" Label="1" PortEnabled="true"/>
+</EthernetPorts>
+</Controller>
+</RSLogix5000Content>

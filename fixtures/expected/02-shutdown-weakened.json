@@ -1,0 +1,67 @@
+{
+  "scenario": "02",
+  "title": "Compressor shutdown weakened by maintenance mode",
+  "why": [
+    "C201_Shutdown_Cmd is ENERGIZE-to-trip. Before: fires when PT201_High AND Safety_Enable. After: PT201_High AND Safety_Enable AND NOT Maintenance_Mode. Witness: PT201_High=1, Safety_Enable=1, Maintenance_Mode=1 fired before and does not fire now.",
+    "Maintenance_Mode is a new atom that only removes firing cases, it is ExternalAccess Read/Write and no logic writes it (Utilities only reads it for a lamp): an HMI or OPC client can defeat the shutdown. NEW_INHIBIT, CRITICAL because SF-06 is CRITICAL.",
+    "Compressor runs before Alarms in MainTask, so C201_Shutdown_Alm's rung-in XIC(C201_Shutdown_Cmd) sees this scan's value: the alarm loses exactly the same cases. ALARM_SUPPRESSED on SF-06 with suppressor Maintenance_Mode, at least HIGH: in exactly the cases where the shutdown no longer acts, the control room is not told either.",
+    "No other function reads C201_Shutdown_Cmd or Maintenance_Mode, so only SF-06 is IMPACTED. The changed rung is inside SF-06's cone, so no UNDECLARED finding and trust stays VERIFIED_SCOPE."
+  ],
+  "findings": {
+    "mustInclude": [
+      {
+        "type": "NEW_INHIBIT",
+        "severity": "CRITICAL",
+        "safetyFunctionIds": [
+          "SF-06"
+        ],
+        "program": "Compressor",
+        "routine": "Main",
+        "inhibitLabels": [
+          "Maintenance_Mode"
+        ]
+      },
+      {
+        "type": "ALARM_SUPPRESSED",
+        "minSeverity": "HIGH",
+        "safetyFunctionIds": [
+          "SF-06"
+        ],
+        "suppressorLabels": [
+          "Maintenance_Mode"
+        ]
+      }
+    ],
+    "mustNotIncludeTypes": [
+      "PROTECTION_STRENGTHENED",
+      "COSMETIC_LOGIC_CHANGE",
+      "UNDECLARED_LOGIC_CHANGED",
+      "NON_SAFETY_LOGIC_CHANGE",
+      "SHARED_MODULE_PROPAGATION",
+      "PROTECTIVE_PATH_REMOVED",
+      "PROTECTIVE_OUTPUT_BYPASSED",
+      "EXTERNAL_WRITE_ACCESS_GRANTED"
+    ]
+  },
+  "safetyStatus": {
+    "SF-01": "NO_CHANGE",
+    "SF-02": "NO_CHANGE",
+    "SF-03": "NO_CHANGE",
+    "SF-04": "NO_CHANGE",
+    "SF-05": "NO_CHANGE",
+    "SF-06": "IMPACTED",
+    "SF-07": "NO_CHANGE",
+    "SF-08": "NO_CHANGE"
+  },
+  "trust": "VERIFIED_SCOPE",
+  "priority": "CRITICAL",
+  "surface": {
+    "undeclaredAffected": 0
+  },
+  "changeCounts": {
+    "logic": {
+      "min": 1,
+      "max": 1
+    }
+  }
+}

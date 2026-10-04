@@ -1,0 +1,46 @@
+{
+  "scenario": "05",
+  "title": "Protective output bypassed from non-safety code",
+  "why": [
+    "Utilities runs after PumpControl in MainTask. Each scan the AOI writes Pump_01_Run_Enable from its trip logic, then Utilities/Commissioning OTLs it back to 1 whenever Pump_01_Manual_Override is set. The final value is Override OR (Run_Request AND NOT Trip): with the override set, SF-02 can never de-energize P-101.",
+    "Pump_01_Manual_Override is a new Read/Write tag written by no logic. PROTECTIVE_OUTPUT_BYPASSED, CRITICAL, on SF-02, located in Utilities/Commissioning, naming the override tag.",
+    "The writer sits in a program declared non-safety, which is the reason the declaration cannot be trusted at face value; it must not be reported only as an INFO non-safety change.",
+    "Pump_01_Shutdown_Alarm still follows the AOI's Trip, so the operator is still told about the trip the pump ignores: no ALARM_SUPPRESSED.",
+    "Only SF-02 is IMPACTED; no other function reads Pump_01_Run_Enable."
+  ],
+  "findings": {
+    "mustInclude": [
+      {
+        "type": "PROTECTIVE_OUTPUT_BYPASSED",
+        "severity": "CRITICAL",
+        "safetyFunctionIds": [
+          "SF-02"
+        ],
+        "program": "Utilities",
+        "routine": "Commissioning",
+        "causeLabels": [
+          "Pump_01_Manual_Override"
+        ]
+      }
+    ],
+    "mustNotIncludeTypes": [
+      "ALARM_SUPPRESSED",
+      "PROTECTION_STRENGTHENED",
+      "COSMETIC_LOGIC_CHANGE",
+      "SHARED_MODULE_PROPAGATION",
+      "PROTECTIVE_PATH_REMOVED",
+      "MODULE_REVISION_NOT_BUMPED"
+    ]
+  },
+  "safetyStatus": {
+    "SF-01": "NO_CHANGE",
+    "SF-02": "IMPACTED",
+    "SF-03": "NO_CHANGE",
+    "SF-04": "NO_CHANGE",
+    "SF-05": "NO_CHANGE",
+    "SF-06": "NO_CHANGE",
+    "SF-07": "NO_CHANGE",
+    "SF-08": "NO_CHANGE"
+  },
+  "priority": "CRITICAL"
+}

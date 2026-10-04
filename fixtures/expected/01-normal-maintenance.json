@@ -1,0 +1,92 @@
+{
+  "scenario": "01",
+  "title": "Normal maintenance change",
+  "why": [
+    "Safety/ESD rung 0 only reorders three series contacts (AND is commutative), so MCC_Main_Enable has the same condition: COSMETIC_LOGIC_CHANGE at LOW, naming SF-01.",
+    "Safety/Overflow rung 0 adds a parallel branch GRT(LT101_PV,92.0) next to XIC(LSHH_101). XV101_Close_Cmd is ENERGIZE-to-trip, so the valve now closes in every case it closed before plus when the transmitter reads above 92 %: PROTECTION_STRENGTHENED (INFO) on SF-05, status STRENGTHENED.",
+    "Utilities/Lighting rung 1 and Reporting/Main rung 0 are in programs declared non-safety and write nothing any safety function reads: two NON_SAFETY_LOGIC_CHANGE findings at INFO. The Reporting edit also moves the stored PRE of Pump_01_Hours to 1800000, because in Logix the instruction preset and the timer PRE are one value.",
+    "Reporting reads Pump_01_Run_Enable but does not write it, so it is not in SF-02's cone.",
+    "DISAGREES WITH THE BRIEF: the brief says \"others NO_CHANGE\", but ESD rung 0 is inside the cones of SF-02, SF-03 and SF-04 (MCC_Main_Enable -> ESD_Active -> each AOI ESD_Active input) and of SF-08 (XIC(MCC_Main_Enable) in Permissives). A change sits in their cones and their firing conditions are provably equivalent, which is exactly CHANGED_EQUIVALENT. Reporting NO_CHANGE would claim nothing in the cone changed. SF-06 and SF-07 cones do not include ESD rung 0 and stay NO_CHANGE.",
+    "The 4 rung comment and 6 tag description edits are documentation only. One of them is on Pump_05_Motor_Temp_Hi, which no safety function declares: a documentation edit in undeclared scope must not produce an UNDECLARED finding.",
+    "Nothing is REVIEW or UNDECLARED, so surface.priority is NONE and the worst finding of any disposition is LOW. Every changed rung is inside a declared cone or declared non-safety, so trust is VERIFIED_SCOPE."
+  ],
+  "findings": {
+    "mustInclude": [
+      {
+        "type": "COSMETIC_LOGIC_CHANGE",
+        "severity": "LOW",
+        "safetyFunctionIds": [
+          "SF-01"
+        ],
+        "program": "Safety",
+        "routine": "ESD"
+      },
+      {
+        "type": "PROTECTION_STRENGTHENED",
+        "severity": "INFO",
+        "safetyFunctionIds": [
+          "SF-05"
+        ],
+        "program": "Safety",
+        "routine": "Overflow"
+      },
+      {
+        "type": "NON_SAFETY_LOGIC_CHANGE",
+        "severity": "INFO",
+        "safetyFunctionIds": [],
+        "program": "Utilities",
+        "routine": "Lighting"
+      },
+      {
+        "type": "NON_SAFETY_LOGIC_CHANGE",
+        "severity": "INFO",
+        "safetyFunctionIds": [],
+        "program": "Reporting",
+        "routine": "Main"
+      }
+    ],
+    "mustNotIncludeTypes": [
+      "PROTECTIVE_PATH_REMOVED",
+      "NEW_INHIBIT",
+      "SHUTDOWN_WEAKENED",
+      "PROTECTIVE_OUTPUT_BYPASSED",
+      "ALARM_SUPPRESSED",
+      "PERMISSIVE_WEAKENED",
+      "INTERLOCK_WEAKENED",
+      "SETPOINT_RELAXED",
+      "TRIP_DELAY_INCREASED",
+      "EXECUTION_CONTROL_INTRODUCED",
+      "UNDECLARED_LOGIC_CHANGED",
+      "SHARED_MODULE_PROPAGATION",
+      "MODULE_REVISION_NOT_BUMPED",
+      "EXTERNAL_WRITE_ACCESS_GRANTED",
+      "DECLARATION_UNRESOLVED"
+    ],
+    "maxSeverityOverall": "LOW"
+  },
+  "safetyStatus": {
+    "SF-01": "CHANGED_EQUIVALENT",
+    "SF-02": "CHANGED_EQUIVALENT",
+    "SF-03": "CHANGED_EQUIVALENT",
+    "SF-04": "CHANGED_EQUIVALENT",
+    "SF-05": "STRENGTHENED",
+    "SF-06": "NO_CHANGE",
+    "SF-07": "NO_CHANGE",
+    "SF-08": "CHANGED_EQUIVALENT"
+  },
+  "trust": "VERIFIED_SCOPE",
+  "priority": "NONE",
+  "surface": {
+    "undeclaredAffected": 0
+  },
+  "changeCounts": {
+    "logic": {
+      "min": 4,
+      "max": 4
+    },
+    "documentation": {
+      "min": 10,
+      "max": 10
+    }
+  }
+}

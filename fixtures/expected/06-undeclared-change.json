@@ -1,0 +1,68 @@
+{
+  "scenario": "06",
+  "title": "Undeclared logic changed",
+  "why": [
+    "Auxiliary is neither declared safety nor declared non-safety. SealWater loses XIO(Seal_Water_Low): SV-104 now opens with the seal water tank empty. Sump gains XIO(Sump_Pump_Fault). Both are outside every declared cone.",
+    "PumpControl/PUMP_05 rung 1 (Pump_05_Shutdown_Alarm) is deleted. PUMP_05 is in a program that implements safety functions, but no declared function covers P-105, so this is undeclared too.",
+    "INTERLOCK must not call any of these safe: three UNDECLARED_LOGIC_CHANGED findings (one per routine), undeclaredAffected = 3, trust REVIEW_REQUIRED.",
+    "No declared function's cone contains these rungs (SealWater reads Pump_04_Run_Enable but SF-02..SF-04 cover P-101..P-103), so every function is NO_CHANGE and no weakening type may appear."
+  ],
+  "findings": {
+    "mustInclude": [
+      {
+        "type": "UNDECLARED_LOGIC_CHANGED",
+        "safetyFunctionIds": [],
+        "program": "Auxiliary",
+        "routine": "SealWater"
+      },
+      {
+        "type": "UNDECLARED_LOGIC_CHANGED",
+        "safetyFunctionIds": [],
+        "program": "Auxiliary",
+        "routine": "Sump"
+      },
+      {
+        "type": "UNDECLARED_LOGIC_CHANGED",
+        "safetyFunctionIds": [],
+        "program": "PumpControl",
+        "routine": "PUMP_05"
+      }
+    ],
+    "mustNotIncludeTypes": [
+      "PROTECTIVE_PATH_REMOVED",
+      "NEW_INHIBIT",
+      "SHUTDOWN_WEAKENED",
+      "PROTECTIVE_OUTPUT_BYPASSED",
+      "ALARM_SUPPRESSED",
+      "PERMISSIVE_WEAKENED",
+      "INTERLOCK_WEAKENED",
+      "SETPOINT_RELAXED",
+      "TRIP_DELAY_INCREASED",
+      "EXECUTION_CONTROL_INTRODUCED",
+      "PROTECTION_STRENGTHENED",
+      "COSMETIC_LOGIC_CHANGE",
+      "SHARED_MODULE_PROPAGATION",
+      "NON_SAFETY_LOGIC_CHANGE"
+    ]
+  },
+  "safetyStatus": {
+    "SF-01": "NO_CHANGE",
+    "SF-02": "NO_CHANGE",
+    "SF-03": "NO_CHANGE",
+    "SF-04": "NO_CHANGE",
+    "SF-05": "NO_CHANGE",
+    "SF-06": "NO_CHANGE",
+    "SF-07": "NO_CHANGE",
+    "SF-08": "NO_CHANGE"
+  },
+  "trust": "REVIEW_REQUIRED",
+  "surface": {
+    "undeclaredAffected": 3
+  },
+  "changeCounts": {
+    "logic": {
+      "min": 3,
+      "max": 3
+    }
+  }
+}

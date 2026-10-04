@@ -1,0 +1,81 @@
+{
+  "scenario": "08",
+  "title": "Large noisy export with three logic changes",
+  "why": [
+    "Of roughly 425 changes, 400 are documentation (340 tag descriptions, 60 rung comments), 20 are drifted process values, 1 is the C201_LP_Delay PRE that moves with its TON preset, and 2 are export dates. Exactly three rungs change.",
+    "Safety/Permissives GRT(Suction_Press_PV,12.0) -> 8.0: the permissive (DE_ENERGIZE) used to drop for suction pressure in (8, 12] psig and no longer does. SETPOINT_RELAXED at HIGH on SF-08 (a HIGH function).",
+    "Compressor/Main rung 2 TON preset 2000 -> 10000 delays C201_Low_Press_Trip from 2 s to 10 s. No declared function's cone contains it (SF-06 depends only on rung 0), so UNDECLARED_LOGIC_CHANGED; the tag name contains \"Trip\", which a name hint should surface.",
+    "Safety/ESD rung 0 is the same commutative reorder as scenario 01: COSMETIC_LOGIC_CHANGE naming SF-01, and SF-01..SF-04 are CHANGED_EQUIVALENT for the cone reason explained in scenario 01. SF-08 also contains the reorder but its setpoint was relaxed, so IMPACTED.",
+    "Documentation edits land in every cone, including SF-05, SF-06 and SF-07; they never change a status, so those stay NO_CHANGE.",
+    "One undeclared routine changed, so trust is REVIEW_REQUIRED and undeclaredAffected = 1. The worst REVIEW finding is the HIGH setpoint relaxation."
+  ],
+  "findings": {
+    "mustInclude": [
+      {
+        "type": "SETPOINT_RELAXED",
+        "severity": "HIGH",
+        "safetyFunctionIds": [
+          "SF-08"
+        ],
+        "program": "Safety",
+        "routine": "Permissives"
+      },
+      {
+        "type": "UNDECLARED_LOGIC_CHANGED",
+        "safetyFunctionIds": [],
+        "program": "Compressor",
+        "routine": "Main"
+      },
+      {
+        "type": "COSMETIC_LOGIC_CHANGE",
+        "safetyFunctionIds": [
+          "SF-01"
+        ],
+        "program": "Safety",
+        "routine": "ESD"
+      }
+    ],
+    "mustNotIncludeTypes": [
+      "NEW_INHIBIT",
+      "PROTECTIVE_PATH_REMOVED",
+      "SHUTDOWN_WEAKENED",
+      "PROTECTIVE_OUTPUT_BYPASSED",
+      "ALARM_SUPPRESSED",
+      "SHARED_MODULE_PROPAGATION",
+      "MODULE_REVISION_NOT_BUMPED",
+      "NON_SAFETY_LOGIC_CHANGE",
+      "EXECUTION_CONTROL_INTRODUCED",
+      "PROTECTION_STRENGTHENED"
+    ],
+    "maxSeverity": "HIGH"
+  },
+  "safetyStatus": {
+    "SF-01": "CHANGED_EQUIVALENT",
+    "SF-02": "CHANGED_EQUIVALENT",
+    "SF-03": "CHANGED_EQUIVALENT",
+    "SF-04": "CHANGED_EQUIVALENT",
+    "SF-05": "NO_CHANGE",
+    "SF-06": "NO_CHANGE",
+    "SF-07": "NO_CHANGE",
+    "SF-08": "IMPACTED"
+  },
+  "trust": "REVIEW_REQUIRED",
+  "priority": "HIGH",
+  "surface": {
+    "undeclaredAffected": 1
+  },
+  "changeCounts": {
+    "logic": {
+      "min": 3,
+      "max": 3
+    },
+    "documentation": {
+      "min": 380,
+      "max": 480
+    },
+    "data": {
+      "min": 20,
+      "max": 22
+    }
+  }
+}

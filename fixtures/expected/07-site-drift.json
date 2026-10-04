@@ -1,0 +1,50 @@
+{
+  "scenario": "07",
+  "title": "AOI drift across three sites",
+  "why": [
+    "Site A carries AOI_PumpInterlock 3.4 exactly as the approved baseline and is the reference.",
+    "Site B still says Revision 3.4 but rung 0 lost XIC(Motor_Temp_Hi): same name and revision, different body (REVISION_NOT_BUMPED). Its Trip, and so Run_Enable's trip and Shutdown_Alarm, fire in fewer cases: Motor_Temp_Hi=1 with every other cause clear trips at A and not at B. WEAKER.",
+    "Site C carries 3.1, which predates the ESD_Active input (OLDER_REVISION). With ESD_Active=1 and every other cause clear, A trips and C does not. WEAKER.",
+    "Both differences remove trip cases from an output a safety function depends on, so SAFETY_BEHAVIOR_DIFFERS. SAME_NAME_DIFFERENT_DEFINITION is also true and may appear; it is not required.",
+    "AOI_ValveCtl exists only in Site C's library (defined, not called): missingAt Site A and Site B.",
+    "Site C is exported with documentation languages enabled (LocalizedDescription / LocalizedComment); that is a parser variant, not a drift."
+  ],
+  "drift": {
+    "AOI_PumpInterlock": {
+      "status": "DRIFT",
+      "reference": "Site A",
+      "flags": [
+        "REVISION_NOT_BUMPED",
+        "OLDER_REVISION",
+        "SAFETY_BEHAVIOR_DIFFERS"
+      ],
+      "flagSites": {
+        "REVISION_NOT_BUMPED": [
+          "Site B"
+        ],
+        "OLDER_REVISION": [
+          "Site C"
+        ]
+      },
+      "variants": {
+        "Site A": "REFERENCE",
+        "Site B": "WEAKER",
+        "Site C": "WEAKER"
+      },
+      "revisions": {
+        "Site A": "3.4",
+        "Site B": "3.4",
+        "Site C": "3.1"
+      }
+    },
+    "AOI_ValveCtl": {
+      "flags": [
+        "MISSING_AT_SITE"
+      ],
+      "missingAt": [
+        "Site A",
+        "Site B"
+      ]
+    }
+  }
+}

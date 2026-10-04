@@ -1,0 +1,77 @@
+{
+  "scenario": "04",
+  "title": "Shared pump interlock AOI modified",
+  "why": [
+    "AOI_PumpInterlock Logic rung 0 becomes [...]XIO(Maint_Bypass)OTE(Trip): with Maint_Bypass set, Trip is false whatever the trip causes say, so Run_Enable = Run_Request and every protective input is defeated.",
+    "Maint_Bypass is Required=false, so no call site passes it: it lives in each backing tag (PUMP_0n_IL.Maint_Bypass), the instance tags are Read/Write, and no logic writes it. It is an externally writable inhibit in every instance.",
+    "The block has 5 call sites. PUMP_01..03 implement SF-02, SF-03 and SF-04 (safety-relevant); PUMP_04 and PUMP_05 are operational. SHARED_MODULE_PROPAGATION with blast radius 5 / 3 / 2.",
+    "NEW_INHIBIT, CRITICAL, module AOI_PumpInterlock, covering SF-02, SF-03 and SF-04 (one module-level finding or one per function both satisfy the oracle).",
+    "SF-02 declares Pump_01_Shutdown_Alarm, which follows PUMP_01_IL.Shutdown_Alarm = Trip: the bypass also silences that alarm, so ALARM_SUPPRESSED on SF-02. SF-03 and SF-04 declare no alarm.",
+    "The revision was bumped 3.4 -> 3.5, so MODULE_REVISION_NOT_BUMPED must not appear. SF-01, SF-05..SF-08 read nothing the block writes and stay NO_CHANGE."
+  ],
+  "findings": {
+    "mustInclude": [
+      {
+        "type": "SHARED_MODULE_PROPAGATION",
+        "safetyFunctionIds": [
+          "SF-02",
+          "SF-03",
+          "SF-04"
+        ],
+        "module": "AOI_PumpInterlock"
+      },
+      {
+        "type": "NEW_INHIBIT",
+        "severity": "CRITICAL",
+        "safetyFunctionIds": [
+          "SF-02",
+          "SF-03",
+          "SF-04"
+        ],
+        "module": "AOI_PumpInterlock",
+        "inhibitLabels": [
+          "Maint_Bypass"
+        ]
+      },
+      {
+        "type": "ALARM_SUPPRESSED",
+        "safetyFunctionIds": [
+          "SF-02"
+        ],
+        "suppressorLabels": [
+          "Maint_Bypass"
+        ]
+      }
+    ],
+    "mustNotIncludeTypes": [
+      "MODULE_REVISION_NOT_BUMPED",
+      "PROTECTION_STRENGTHENED",
+      "COSMETIC_LOGIC_CHANGE",
+      "NON_SAFETY_LOGIC_CHANGE",
+      "PROTECTIVE_OUTPUT_BYPASSED",
+      "PROTECTIVE_PATH_REMOVED"
+    ]
+  },
+  "safetyStatus": {
+    "SF-01": "NO_CHANGE",
+    "SF-02": "IMPACTED",
+    "SF-03": "IMPACTED",
+    "SF-04": "IMPACTED",
+    "SF-05": "NO_CHANGE",
+    "SF-06": "NO_CHANGE",
+    "SF-07": "NO_CHANGE",
+    "SF-08": "NO_CHANGE"
+  },
+  "priority": "CRITICAL",
+  "surface": {
+    "blastRadius": 5
+  },
+  "blastRadius": {
+    "AOI_PumpInterlock": {
+      "instances": 5,
+      "safetyRelevant": 3,
+      "operational": 2,
+      "notExecuted": 0
+    }
+  }
+}

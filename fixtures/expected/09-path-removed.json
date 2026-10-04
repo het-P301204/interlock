@@ -1,0 +1,66 @@
+{
+  "scenario": "09",
+  "title": "Protective paths removed",
+  "why": [
+    "Safety/ESD rung 0 loses XIO(Fire_Detected): a fire panel alarm no longer drops MCC_Main_Enable. Fire_Detected disappears from SF-01's firing condition: PROTECTIVE_PATH_REMOVED, CRITICAL, naming Fire_Detected.",
+    "JSR(PUMP_03,0) is deleted from PumpControl/Main, so PUMP_03 and the PUMP_03_IL call never execute. Pump_03_Run_Enable is no longer written and holds its last value: SF-04 cannot trip at all. PROTECTIVE_PATH_REMOVED on SF-04, at least HIGH (SF-04 is HIGH).",
+    "BEYOND THE BRIEF: the ESD change propagates. ESD_Active = NOT MCC_Main_Enable feeds every pump interlock, so P-101 and P-102 no longer trip on fire (SF-02, SF-03), and Pump_Start_Permissive reads MCC_Main_Enable, so pumps may start during a fire (SF-08). Each loses the Fire_Detected case: a weakening finding of a path-removed or weakened type must name SF-02, SF-03 and SF-08, and all three are IMPACTED.",
+    "SF-01's alarm ESD_Trip_Horn = NOT MCC_Main_Enable also no longer sounds on fire. The oracle does not require a separate alarm finding for it because the root-cause finding above already covers the same cause.",
+    "SF-05, SF-06 and SF-07 read nothing that changed and stay NO_CHANGE. No atom was added, so NEW_INHIBIT must not appear."
+  ],
+  "findings": {
+    "mustInclude": [
+      {
+        "type": "PROTECTIVE_PATH_REMOVED",
+        "severity": "CRITICAL",
+        "safetyFunctionIds": [
+          "SF-01"
+        ],
+        "program": "Safety",
+        "routine": "ESD",
+        "causeLabels": [
+          "Fire_Detected"
+        ]
+      },
+      {
+        "type": "PROTECTIVE_PATH_REMOVED",
+        "minSeverity": "HIGH",
+        "safetyFunctionIds": [
+          "SF-04"
+        ]
+      },
+      {
+        "type": [
+          "PROTECTIVE_PATH_REMOVED",
+          "SHUTDOWN_WEAKENED",
+          "INTERLOCK_WEAKENED",
+          "PERMISSIVE_WEAKENED"
+        ],
+        "safetyFunctionIds": [
+          "SF-02",
+          "SF-03",
+          "SF-08"
+        ]
+      }
+    ],
+    "mustNotIncludeTypes": [
+      "NEW_INHIBIT",
+      "PROTECTION_STRENGTHENED",
+      "COSMETIC_LOGIC_CHANGE",
+      "NON_SAFETY_LOGIC_CHANGE",
+      "SHARED_MODULE_PROPAGATION",
+      "MODULE_REVISION_NOT_BUMPED"
+    ]
+  },
+  "safetyStatus": {
+    "SF-01": "IMPACTED",
+    "SF-02": "IMPACTED",
+    "SF-03": "IMPACTED",
+    "SF-04": "IMPACTED",
+    "SF-05": "NO_CHANGE",
+    "SF-06": "NO_CHANGE",
+    "SF-07": "NO_CHANGE",
+    "SF-08": "IMPACTED"
+  },
+  "priority": "CRITICAL"
+}

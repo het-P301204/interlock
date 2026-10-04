@@ -1,0 +1,155 @@
+{
+  "schema": "interlock.safety/v1",
+  "project": "Northgate Pump Station",
+  "functions": [
+    {
+      "id": "SF-01",
+      "name": "Emergency Shutdown",
+      "description": "Drops MCC-1 main enable, stopping every pump, on loss of the E-stop loop, a remote ESD demand or a fire panel alarm.",
+      "kind": "SHUTDOWN",
+      "criticality": "CRITICAL",
+      "implementation": {
+        "program": "Safety",
+        "routine": "ESD"
+      },
+      "protectiveOutput": {
+        "tag": "MCC_Main_Enable",
+        "tripState": "DE_ENERGIZE"
+      },
+      "alarm": {
+        "tag": "ESD_Trip_Horn",
+        "notification": "Control room horn and beacon"
+      },
+      "notes": "ESD_Active (rung 1) also feeds the ESD_Active input of every AOI_PumpInterlock instance."
+    },
+    {
+      "id": "SF-02",
+      "name": "Pump P-101 High-Level Shutdown",
+      "description": "Stops P-101 when the wet well reaches high-high, or on any other trip cause wired to its interlock block.",
+      "kind": "SHUTDOWN",
+      "criticality": "CRITICAL",
+      "implementation": {
+        "program": "PumpControl",
+        "routine": "PUMP_01",
+        "module": "AOI_PumpInterlock",
+        "instance": "PUMP_01_IL"
+      },
+      "protectiveOutput": {
+        "tag": "Pump_01_Run_Enable",
+        "tripState": "DE_ENERGIZE"
+      },
+      "alarm": {
+        "tag": "Pump_01_Shutdown_Alarm",
+        "notification": "HMI alarm summary, Control Room A"
+      }
+    },
+    {
+      "id": "SF-03",
+      "name": "Pump P-102 Motor Overtemperature Interlock",
+      "description": "Blocks P-102 from running while its motor winding over-temperature relay is picked up.",
+      "kind": "INTERLOCK",
+      "criticality": "HIGH",
+      "implementation": {
+        "program": "PumpControl",
+        "routine": "PUMP_02",
+        "module": "AOI_PumpInterlock",
+        "instance": "PUMP_02_IL"
+      },
+      "protectiveOutput": {
+        "tag": "Pump_02_Run_Enable",
+        "tripState": "DE_ENERGIZE"
+      }
+    },
+    {
+      "id": "SF-04",
+      "name": "Pump P-103 Low-Pressure Trip",
+      "description": "Trips P-103 on low suction pressure (PSL-103) to protect the pump from cavitation.",
+      "kind": "TRIP",
+      "criticality": "HIGH",
+      "implementation": {
+        "program": "PumpControl",
+        "routine": "PUMP_03",
+        "module": "AOI_PumpInterlock",
+        "instance": "PUMP_03_IL"
+      },
+      "protectiveOutput": {
+        "tag": "Pump_03_Run_Enable",
+        "tripState": "DE_ENERGIZE"
+      },
+      "notes": "P-103 is the only pump whose Press_Trip input is a suction low switch rather than discharge high."
+    },
+    {
+      "id": "SF-05",
+      "name": "Tank T-101 Overflow Protection",
+      "description": "Closes inlet valve XV-101 when the wet well high-high float LSHH-101 trips.",
+      "kind": "SHUTDOWN",
+      "criticality": "CRITICAL",
+      "implementation": {
+        "program": "Safety",
+        "routine": "Overflow"
+      },
+      "protectiveOutput": {
+        "tag": "XV101_Close_Cmd",
+        "tripState": "ENERGIZE"
+      }
+    },
+    {
+      "id": "SF-06",
+      "name": "Compressor C-201 High-Pressure Shutdown",
+      "description": "Shuts down air compressor C-201 when receiver pressure switch PSH-201 trips.",
+      "kind": "SHUTDOWN",
+      "criticality": "CRITICAL",
+      "implementation": {
+        "program": "Compressor",
+        "routine": "Main"
+      },
+      "protectiveOutput": {
+        "tag": "C201_Shutdown_Cmd",
+        "tripState": "ENERGIZE"
+      },
+      "alarm": {
+        "tag": "C201_Shutdown_Alm",
+        "notification": "HMI alarm summary, Control Room A"
+      },
+      "enableCondition": "Safety_Enable",
+      "notes": "Armed only while Safety_Enable is set at the HMI; the receiver relief valve is the independent layer."
+    },
+    {
+      "id": "SF-07",
+      "name": "Tank T-101 High-High Level Alarm",
+      "description": "Annunciates T-101 high-high level to the control room so an operator can respond before overflow.",
+      "kind": "ALARM",
+      "criticality": "CRITICAL",
+      "implementation": {
+        "program": "Alarms",
+        "routine": "Main"
+      },
+      "alarm": {
+        "tag": "LT101_HH_Alm",
+        "notification": "HMI alarm summary, Control Room A"
+      }
+    },
+    {
+      "id": "SF-08",
+      "name": "Pump Start Permissive",
+      "description": "Allows pump starts only with MCC-1 enabled, the wet well below high-high and enough suction pressure.",
+      "kind": "PERMISSIVE",
+      "criticality": "HIGH",
+      "implementation": {
+        "program": "Safety",
+        "routine": "Permissives"
+      },
+      "protectiveOutput": {
+        "tag": "Pump_Start_Permissive",
+        "tripState": "DE_ENERGIZE"
+      },
+      "notes": "The 12 psig suction setpoint gives NPSH margin at rated flow (calc NG-C-031)."
+    }
+  ],
+  "nonSafetyScope": {
+    "programs": [
+      "Utilities",
+      "Reporting"
+    ]
+  }
+}

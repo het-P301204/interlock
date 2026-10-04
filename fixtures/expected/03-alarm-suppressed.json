@@ -1,0 +1,58 @@
+{
+  "scenario": "03",
+  "title": "High-high level alarm suppressed",
+  "why": [
+    "The ALMD operands are AlarmTag, ProgAck, ProgReset, ProgDisable, ProgEnable. High_Level_Inhibit now sits in the ProgDisable position, so while it is set the T-101 high-high alarm is disabled even though LSHH-101 is made.",
+    "High_Level_Inhibit is a new controller tag, ExternalAccess Read/Write, written by no logic: an HMI or OPC client sets it. ALARM_SUPPRESSED, CRITICAL, on SF-07 with suppressor High_Level_Inhibit.",
+    "SF-07 is an ALARM function with no protective output, so this is not a NEW_INHIBIT on a protective output.",
+    "SF-05 also uses LSHH_101 but its rung (Safety/Overflow) is untouched and nothing it reads changed: XV-101 still closes. SF-05 NO_CHANGE is the point of the scenario: the protection works, the operator is not told."
+  ],
+  "findings": {
+    "mustInclude": [
+      {
+        "type": "ALARM_SUPPRESSED",
+        "severity": "CRITICAL",
+        "safetyFunctionIds": [
+          "SF-07"
+        ],
+        "program": "Alarms",
+        "routine": "Main",
+        "suppressorLabels": [
+          "High_Level_Inhibit"
+        ]
+      }
+    ],
+    "mustNotIncludeTypes": [
+      "NEW_INHIBIT",
+      "PROTECTIVE_PATH_REMOVED",
+      "SHUTDOWN_WEAKENED",
+      "PROTECTIVE_OUTPUT_BYPASSED",
+      "UNDECLARED_LOGIC_CHANGED",
+      "NON_SAFETY_LOGIC_CHANGE",
+      "COSMETIC_LOGIC_CHANGE",
+      "PROTECTION_STRENGTHENED",
+      "SHARED_MODULE_PROPAGATION"
+    ]
+  },
+  "safetyStatus": {
+    "SF-01": "NO_CHANGE",
+    "SF-02": "NO_CHANGE",
+    "SF-03": "NO_CHANGE",
+    "SF-04": "NO_CHANGE",
+    "SF-05": "NO_CHANGE",
+    "SF-06": "NO_CHANGE",
+    "SF-07": "IMPACTED",
+    "SF-08": "NO_CHANGE"
+  },
+  "trust": "VERIFIED_SCOPE",
+  "priority": "CRITICAL",
+  "surface": {
+    "undeclaredAffected": 0
+  },
+  "changeCounts": {
+    "logic": {
+      "min": 1,
+      "max": 1
+    }
+  }
+}
