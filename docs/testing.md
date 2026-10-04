@@ -30,7 +30,7 @@ Vitest picks up `packages/*/test/**/*.test.ts`, `apps/api/test/**`, `apps/cli/te
 | Fixture generator | `tests/fixtures/fixtures.test.ts` | the generator is deterministic and matches the files on disk; every rung balances and ends with `;`; every AOI call passes the required arguments; every operand exists; each scenario's edits land exactly where intended; manifests resolve; the registry and the expected files are consistent |
 | API | `apps/api/test/api.test.ts`, `security.test.ts`, `store.test.ts` | meta routes and that every registered route is in the OpenAPI document; project, upload (raw and multipart) and manifest validation; 413 for oversized bodies with and without `Content-Length`; scenario 02 and drift through the API; 504 on the worker timeout and 503 beyond the concurrency limit; bearer token (health stays open, mutations protected, any-length comparison), configuration refusals, loopback binding and Host checks, cross-origin rejection, static serving and path containment; store migration and BLOB round trip |
 | CLI | `apps/cli/test/cli.test.ts` | version and help, exit codes 0/1/2, the `--fail-on` gate including UNDECLARED findings, every output format with the gate verdict on stderr, valid SARIF 2.1.0, drift and scenarios, terminal-escape stripping of hostile exports |
-| End to end | `tests/e2e/` (Playwright, `playwright.config.ts`) | the production build served by the API on port 8797 with an in-memory database, desktop and mobile (`@mobile`) projects. The harness and the CI job are in place; at the time of writing `tests/e2e/` holds no specs yet |
+| End to end | `tests/e2e/` (Playwright, `playwright.config.ts`) | the production build served by the API on port 8797 with an in-memory database, desktop and mobile (`@mobile`) projects. Specs: landing (metadata, no third-party requests), ingest with real file uploads and SHA-256 checks, hostile files (XXE, wrong root), every demo scenario against its oracle, finding detail and evidence panel, filters, command palette, report downloads, theme and reduced motion, graph/safety map/drift, phone layout, and axe WCAG 2.1 AA scans in light and dark |
 
 ## The oracle
 
@@ -50,4 +50,4 @@ The golden tests run each scenario twice and require identical JSON. The engine 
 
 ## Current count
 
-At the time of writing (2026-10-04), `npx vitest run` reports **547 tests in 20 files, all passing**.
+At the time of writing (2026-10-04), `npx vitest run` reports **553 tests in 21 files, all passing**, and `npx playwright test` reports **37 end-to-end tests passing** (34 desktop, 3 phone), including axe accessibility scans of every page in light and dark mode with zero serious or critical violations.

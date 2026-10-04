@@ -4,8 +4,40 @@
 
 A diff of two PLC exports tells you which rungs changed. INTERLOCK answers the question a reviewer actually has to sign off on: *did this change alter a safety function, where does the change propagate, and could it stop the system from shutting down or from notifying an operator?* It executes one controller scan of each export symbolically, compares the firing condition of every declared protective output and alarm across every input combination, proves which new term inhibits a trip, follows a modified Add-On Instruction to every instance that runs it, and ranks what needs review, with the exact before/after logic, file hashes and XML locations behind every conclusion. It reads exported project files only and never connects to a controller.
 
-<!-- screenshots -->
-<!-- The lead adds docs/screenshots/*.png here: landing page, analysis timeline, impact review, finding detail, reuse graph, safety map. -->
+<p align="center"><img src="apps/web/public/mark.svg" width="56" alt="INTERLOCK mark: a normally-closed contact with the trip slash"></p>
+
+**Try it:** the workstation runs entirely in your browser (no upload, no server) — [het-p301204.github.io/interlock](https://het-p301204.github.io/interlock/) → *Explore Demo*. Or run it locally in two commands (see [Installation](#10-installation)).
+
+![INTERLOCK landing page: "When PLC logic changes, the diff is only the beginning."](docs/screenshots/01-landing.png)
+
+### Impact review
+One AOI definition changed. INTERLOCK follows it to 5 instances, finds 3 that carry declared safety functions, proves the new term is an inhibit, and still refuses to call the 2 undeclared instances safe.
+
+![Impact review for a modified shared AOI](docs/screenshots/02-impact-review.png)
+
+### Finding detail: the firing condition, before and after
+![Finding detail with firing condition, witness, rung text, impact chain and evidence](docs/screenshots/03-finding-detail.png)
+
+<table>
+<tr>
+<td width="50%"><b>Reuse graph</b> — one definition, every call site, every protective output it feeds<br><img src="docs/screenshots/04-reuse-graph.png" alt="Reuse graph centred on AOI_PumpInterlock"></td>
+<td width="50%"><b>Safety map</b> — each declared function from implementation to protective output and alarm<br><img src="docs/screenshots/05-safety-map.png" alt="Safety map"></td>
+</tr>
+<tr>
+<td><b>Evidence ledger</b> — file, SHA-256, XML path, line, rule, timestamp<br><img src="docs/screenshots/06-evidence.png" alt="Forensic evidence panel"></td>
+<td><b>Review-surface reduction</b> — 425 changes in a noisy export, 2 that matter<br><img src="docs/screenshots/07-review-surface.png" alt="Large noisy export reduced to two review items"></td>
+</tr>
+<tr>
+<td><b>Analysis pipeline</b> — ten stages, each reporting what it actually did<br><img src="docs/screenshots/08-analysis-pipeline.png" alt="Analysis timeline"></td>
+<td><b>Cross-site module drift</b> (experimental) — same AOI name, different behaviour<br><img src="docs/screenshots/09-module-drift.png" alt="Module drift across three sites"></td>
+</tr>
+<tr>
+<td><b>Dark mode</b> — graphite, never black-and-neon<br><img src="docs/screenshots/10-findings-dark.png" alt="Findings in dark mode"></td>
+<td><b>Phone</b> — stacked cards and a list view instead of a cramped graph<br><img src="docs/screenshots/11-mobile-finding.png" width="260" alt="Finding detail on a phone"></td>
+</tr>
+</table>
+
+All screenshots are of the real app analyzing the synthetic Northgate fixtures, captured by `node scripts/screenshots.ts`.
 
 ## Contents
 
@@ -315,7 +347,7 @@ Each scenario's hand-written expectations, with a `why` line per expectation, ar
 
 ## 13. Tests
 
-`npx vitest run` currently reports **547 tests in 20 files, all passing**. They cover:
+`npx vitest run` currently reports **553 tests in 21 files, all passing**, and `npx playwright test` reports **37 end-to-end tests passing** (34 desktop, 3 phone), including axe accessibility scans of every page in light and dark mode with zero serious or critical violations. They cover:
 
 - **XML parser**: tree building, positions, CDATA and entities, every error code and limit, prototype safety, DTD rejection in every form; property tests (fast-check) that arbitrary input never produces anything but a `ProjectParseError`; serialize/parse round trips.
 - **Decoding and sanitizing**: strict UTF-8/UTF-16, invisible and bidi character removal as properties, legitimate scripts preserved.
