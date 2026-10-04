@@ -160,7 +160,7 @@ describe('L5X adapter: Northgate sample', () => {
     expect(t('LSHH_101').value).toBeUndefined()
     expect(t('PUMP_01_IL')).toMatchObject({ dataType: 'AOI_PumpInterlock', value: 'EnableIn=1;EnableOut=0' })
     expect(t('C201_LP_Delay').value).toBe('ACC=0;DN=0;EN=0;PRE=2000;TT=0')
-    expect(t('LT101_HH_Alm')).toMatchObject({ dataType: 'ALARM_DIGITAL', value: 'Severity=900;AM=Tank T-101 level high-high' })
+    expect(t('LT101_HH_Alm')).toMatchObject({ dataType: 'ALARM_DIGITAL', value: 'Severity=900;MinDurationPRE=0;ShelveDuration=0;MaxShelveDuration=0;Condition=true;AckRequired=true;Latched=false;ProgDisable=false;OperDisable=false;ProgSuppress=false;OperSuppress=false;OperShelve=false;AM=Tank T-101 level high-high' })
     expect(t('Flow_Totals')).toMatchObject({ dimensions: '4', constant: true, value: '[0.0,0.0,0.0,0.0]', description: 'Flow totalizers & daily volumes' })
     // ExternalAccess absent -> the Logix default
     expect(t('Pump_01_Run_Request').externalAccess).toBe('Read/Write')

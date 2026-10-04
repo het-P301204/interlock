@@ -287,10 +287,12 @@ export function analyzeProjectsSync(input: AnalyzeInput, hooks: AnalyzeHooks = {
         resolution: { ...p.resolution, alarm: n.resolution.alarm, notes: [...new Set([...p.resolution.notes, ...n.resolution.notes])] },
         coneB: new Set([...p.coneB, ...n.coneB]),
         coneC: new Set([...p.coneC, ...n.coneC]),
-        analyzable: p.analyzable || n.analyzable,
+        decided: { ...p.decided, ...n.decided },
+        analyzable: false,
         notes: [...new Set([...p.notes, ...n.notes])],
       }
       if (n.notification) out.notification = n.notification
+      out.analyzable = Object.keys(out.decided).length > 0 && Object.values(out.decided).every(Boolean)
       out.resolution.notes = out.notes
       return out
     })
@@ -495,11 +497,20 @@ function safetyResult(ctx: RuleContext, a: SfAnalysis, findings: Finding[]): Saf
   const weakened =
     (a.protective && isWeakening(a.protective.raw.verdict)) ||
     (a.notification && ['SUPPRESSED', 'DEGRADED', 'BROKEN'].includes(a.notification.status)) ||
-    mine.some((f) => f.type === 'TRIP_DELAY_INCREASED' || f.type === 'EXECUTION_CONTROL_INTRODUCED' || f.type === 'EXTERNAL_WRITE_ACCESS_GRANTED')
+    mine.some((f) => f.disposition === 'REVIEW' && ['TRIP_DELAY_INCREASED', 'EXECUTION_CONTROL_INTRODUCED', 'EXTERNAL_WRITE_ACCESS_GRANTED', 'ALARM_SUPPRESSED', 'PROTECTIVE_OUTPUT_BYPASSED'].includes(f.type))
   const strengthened = a.protective && (a.protective.raw.verdict === 'STRENGTHENED' || a.protective.raw.verdict === 'ALWAYS_FIRES')
   const meaningful = (ctx.sfChanges.get(a.sf.id) ?? []).filter((id) => ['logic', 'execution', 'interface', 'configuration'].includes(ctx.changeById.get(id)!.category))
+  // Unsupported constructs inside this function's own logic (current project) mean the
+  // comparison may not have seen everything: the function is not analyzed, never "unchanged".
+  const blind = ctx.current.scan.diagnostics.some(
+    (d) =>
+      d.locs.some((l) => a.coneC.has(`loc:${l}`)) ||
+      (d.anchors ?? []).some((x) => a.coneC.has(x)) ||
+      (d.routineId !== undefined && a.coneC.has(`routine:${d.routineId}`)),
+  )
+  if (blind) a.notes.push('Part of this function\'s logic uses constructs INTERLOCK does not model (see coverage); its result is incomplete.')
   let status: SafetyStatus
-  if (!a.analyzable || unresolved) status = 'NOT_ANALYZED'
+  if (!a.analyzable || unresolved || blind) status = 'NOT_ANALYZED'
   else if (weakened) status = 'IMPACTED'
   else if (strengthened) status = 'STRENGTHENED'
   else if (meaningful.length > 0 || (a.protective && a.protective.raw.verdict === 'EQUIVALENT')) status = 'CHANGED_EQUIVALENT'
@@ -626,7 +637,13 @@ function coverageOf(ctx: RuleContext, results: SafetyFunctionResult[]): Coverage
       if (seen.has(key)) continue
       seen.add(key)
       const cones = ctx.sf.map((a) => (side.side === 'baseline' ? a.coneB : a.coneC))
-      const inSafetyCone = cones.some((cone) => d.locs.some((l) => cone.has(`loc:${l}`)) || (d.routineId !== undefined && d.rung !== undefined && cone.has(`rung:${d.routineId}#${d.rung}`)))
+      const inSafetyCone = cones.some(
+        (cone) =>
+          d.locs.some((l) => cone.has(`loc:${l}`)) ||
+          (d.anchors ?? []).some((a) => cone.has(a)) ||
+          (d.routineId !== undefined && cone.has(`routine:${d.routineId}`)) ||
+          (d.routineId !== undefined && d.rung !== undefined && cone.has(`rung:${d.routineId}#${d.rung}`)),
+      )
       const changed = d.routineId !== undefined && ctx.changes.some((c) => c.entity.routineId === d.routineId && (c.category === 'logic' || c.category === 'execution'))
       unsupported.push({ kind: d.kind, detail: d.detail, location: d.location, side: side.side, inSafetyCone, changed })
     }
@@ -680,7 +697,13 @@ function trustOf(ctx: RuleContext, results: SafetyFunctionResult[], coverage: Co
   for (const u of coneGaps.slice(0, 5)) reasons.push(`Unsupported construct in safety logic (${u.side}): ${u.detail}`)
   const opaqueRoutines = coverage.unsupported.filter((u) => u.side === 'current' && (u.kind === 'PROTECTED_CONTENT' || (u.kind === 'ROUTINE_TYPE' && !/structured text/i.test(u.detail))))
   for (const u of opaqueRoutines.slice(0, 3)) reasons.push(`Executing logic INTERLOCK cannot read: ${u.detail}`)
-  const partial = notAnalyzed.length > 0 || coneGaps.length > 0 || opaqueRoutines.length > 0
+  const opaqueInCone = ctx.sf.filter((a) =>
+    [a.protective?.raw, a.notification?.raw].some((raw) => raw && raw.atoms.some((i) => ctx.pool.atoms[i]!.kind === 'opaque')),
+  )
+  for (const a of opaqueInCone) reasons.push(`${a.sf.name} depends on conditions INTERLOCK can only treat as unknown (unmodeled instructions or event triggers); its comparison is incomplete.`)
+  const shadowed = ctx.sf.filter((a) => a.shadowed)
+  for (const a of shadowed) reasons.push(`The declared output of ${a.sf.name} now resolves to a different tag (scope shadowing); the declaration is ambiguous.`)
+  const partial = notAnalyzed.length > 0 || coneGaps.length > 0 || opaqueRoutines.length > 0 || opaqueInCone.length > 0 || shadowed.length > 0
   if (undeclared.length) reasons.push(`${undeclared.length} undeclared routine${undeclared.length === 1 ? '' : 's'} affected: ${undeclared.map((u) => `${u.program ? `${u.program}/` : ''}${u.routine}`).join(', ')}.`)
   const changedUnsupported = coverage.unsupported.filter((u) => u.changed && !u.inSafetyCone)
   for (const u of changedUnsupported.slice(0, 3)) reasons.push(`Changed logic contains an unsupported construct: ${u.detail}`)

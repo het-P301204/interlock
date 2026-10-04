@@ -43,9 +43,23 @@ function genericType(sf: SafetyFunction): FindingType {
   return 'SHUTDOWN_WEAKENED'
 }
 
+const classified = new WeakMap<SfAnalysis, WeakeningClass | null>()
+
+/** Classify once per function: the seven protective rules all ask, and suppressor proofs are exhaustive. */
 export function classifyProtective(ctx: RuleContext, a: SfAnalysis): WeakeningClass | null {
+  if (classified.has(a)) return classified.get(a)!
+  const c = classifyUncached(ctx, a)
+  classified.set(a, c)
+  return c
+}
+
+function classifyUncached(ctx: RuleContext, a: SfAnalysis): WeakeningClass | null {
   const p = a.protective
-  if (!p || !isWeakening(p.raw.verdict)) return null
+  if (!p) return null
+  // Undecided comparison: a new writer of the output is still a bypass to review.
+  if (p.raw.verdict === 'NOT_DECIDED' && p.newWriters.length > 0)
+    return { type: 'PROTECTIVE_OUTPUT_BYPASSED', suppressors: [], removedAtoms: [], setpoints: [], neverFires: false }
+  if (!isWeakening(p.raw.verdict)) return null
   const pool = ctx.pool
   const base: WeakeningClass = { type: genericType(a.sf), suppressors: [], removedAtoms: [], setpoints: [], neverFires: false }
   if (p.newWriters.length > 0) return { ...base, type: 'PROTECTIVE_OUTPUT_BYPASSED' }
@@ -404,45 +418,117 @@ export const ProtectionStrengthenedRule: Rule = {
   },
 }
 
+function presetOf(ctx: RuleContext, side: 'baseline' | 'current', use: { loc: string; preset: number | null }): number | null {
+  if (use.preset !== null) return use.preset
+  // "?" in the rung: the preset lives in the timer tag's stored data.
+  const idx = ctx.indexOf(side)
+  const name = use.loc.replace(/^[cp]:(?:[^:]+:)?/, '')
+  const tag = idx.project.tags.find((t) => t.name.toLowerCase() === name)
+  const m = /(?:^|;)PRE=(-?\d+)/.exec(tag?.value ?? '')
+  return m ? Number(m[1]) : null
+}
+
+function taskOfWriter(ctx: RuleContext, side: 'baseline' | 'current', routineId: string): { name: string; type: string; rate?: number } | null {
+  const idx = ctx.indexOf(side)
+  const program = idx.routineProgram.get(routineId)
+  if (!program) return null
+  const taskName = idx.programTask.get(program.toLowerCase())
+  const task = taskName ? idx.tasks.get(taskName.toLowerCase()) : undefined
+  if (!task) return null
+  return task.rate !== undefined ? { name: task.name, type: task.type, rate: task.rate } : { name: task.name, type: task.type }
+}
+
 export const TripDelayRule: Rule = {
   id: 'IL-R009',
   type: 'TRIP_DELAY_INCREASED',
   title: 'Trip delay increased',
-  description: 'A timer inside a protective function\'s dependency cone has a larger preset than in the baseline. INTERLOCK does not model time, so this is reported separately from the firing-condition comparison.',
+  description:
+    'A protective function can now act later: a timer in its dependency cone has a larger preset (in the rung or in the timer tag data), logic now overwrites a timer preset, or the logic moved to a slower or event-driven task. INTERLOCK does not model time, so these are reported separately from the firing-condition comparison.',
   severity: 'HIGH',
   evaluate(ctx) {
     const out: Effect[] = []
     for (const a of ctx.sf) {
+      const changeIds = meaningfulChangeIds(ctx, a.sf.id)
+      const target = a.protective?.outC.label ?? a.sf.alarm?.tag ?? 'the declared output'
+      const push = (key: string, summary: string, explanation: string[], impact: string[], location: Effect['location']) =>
+        out.push({
+          ruleId: 'IL-R009',
+          type: 'TRIP_DELAY_INCREASED',
+          severity: capByCriticality('HIGH', a.sf),
+          confidence: 'MEDIUM',
+          disposition: 'REVIEW',
+          safetyFunctionIds: [a.sf.id],
+          location,
+          changeIds,
+          notificationImpact: 'NONE',
+          title: `${a.sf.name} may act later`,
+          summary,
+          explanation: [
+            ...explanation,
+            'INTERLOCK does not model time: the firing-condition comparison treats timers as following their input and ignores scan rates. Timing changes are reported here so they are reviewed against the process safety time.',
+          ],
+          impact,
+          recommendation: ['Compare the new response time with the process safety time for the hazard this function protects against.'],
+          evidence: [...changeIds.map((changeId) => ({ kind: 'change' as const, changeId })), { kind: 'declaration', sfId: a.sf.id }],
+          groupKey: `DELAY|${key}|${a.sf.id}`,
+          bonus: 0,
+        })
+
+      /* timer presets */
       for (const [loc, uses] of ctx.current.scan.timers) {
         if (!a.coneC.has(`loc:${loc}.dn`) && !a.coneC.has(`loc:${loc}.en`)) continue
         const before = ctx.baseline.scan.timers.get(loc)
-        if (!before) continue
         for (const u of uses) {
-          const b = before.find((x) => x.kind === u.kind)
-          if (!b || b.preset === null || u.preset === null || u.preset <= b.preset) continue
-          const changeIds = meaningfulChangeIds(ctx, a.sf.id)
-          out.push({
-            ruleId: 'IL-R009',
-            type: 'TRIP_DELAY_INCREASED',
-            severity: capByCriticality('HIGH', a.sf),
-            confidence: 'MEDIUM',
-            disposition: 'REVIEW',
-            safetyFunctionIds: [a.sf.id],
-            location: { routineId: u.routineId, rung: u.rung, tag: u.label },
-            changeIds,
-            notificationImpact: 'NONE',
-            title: `Delay in ${a.sf.name} increased`,
-            summary: `${u.kind} ${u.label} preset changed from ${b.presetText} to ${u.presetText} in the dependency cone of ${a.sf.name}.`,
-            explanation: [
-              `${u.label} is a ${u.kind} timer on the path to ${a.protective?.outC.label ?? a.sf.alarm?.tag ?? 'the declared output'}. Its preset changed from ${b.presetText} to ${u.presetText} (${u.kind === 'TON' ? 'on-delay: the function acts later' : 'the timing behaviour changed'}).`,
-              'INTERLOCK does not model time: the firing-condition comparison treats a timer as following its input. The preset change is reported here so it is reviewed against the process safety time.',
-            ],
-            impact: [`The protective action may occur up to ${(u.preset - b.preset).toLocaleString('en-US')} ms later.`],
-            recommendation: ['Compare the new delay with the process safety time for the hazard this function protects against.'],
-            evidence: [...changeIds.map((changeId) => ({ kind: 'change' as const, changeId })), { kind: 'declaration', sfId: a.sf.id }],
-            groupKey: `DELAY|${loc}|${a.sf.id}`,
-            bonus: 0,
-          })
+          const b = before?.find((x) => x.kind === u.kind)
+          const pb = b ? presetOf(ctx, 'baseline', b) : null
+          const pc = presetOf(ctx, 'current', u)
+          if (b && pb !== null && pc !== null && pc > pb) {
+            push(
+              `${loc}:preset`,
+              `${u.kind} ${u.label} preset changed from ${pb.toLocaleString('en-US')} to ${pc.toLocaleString('en-US')} ms on the path to ${target}.`,
+              [`${u.label} is a ${u.kind} timer in the dependency cone of ${a.sf.name}. Its preset changed from ${pb.toLocaleString('en-US')} ms to ${pc.toLocaleString('en-US')} ms${u.preset === null ? ' (stored in the timer tag data)' : ''}.`],
+              [`The protective action may occur up to ${(pc - pb).toLocaleString('en-US')} ms later.`],
+              { routineId: u.routineId, rung: u.rung, tag: u.label },
+            )
+          }
+          const preLoc = `${loc}.pre`
+          const writesC = ctx.current.scan.executedWrites(preLoc)
+          const writesB = ctx.baseline.scan.executedWrites(preLoc)
+          if (writesC.length > 0 && writesC.map((w) => w.instruction).join('|') !== writesB.map((w) => w.instruction).join('|')) {
+            const w = writesC[0]!
+            push(
+              `${loc}:prewrite`,
+              `${w.instruction} now sets the preset of ${u.label}, a timer on the path to ${target}.`,
+              [`Logic writes ${u.label}.PRE at runtime (${writesC.map((x) => `${x.instruction} in ${x.routineId.replace(/^program:/, '')} rung ${x.rung}`).join('; ')}), so the delay is no longer the configured value.`],
+              ['The effective delay of this protective function is set by logic, not by configuration.'],
+              { routineId: w.routineId, rung: w.rung, tag: u.label },
+            )
+          }
+        }
+      }
+
+      /* task scheduling of the protective writers */
+      const writersB = a.protective?.writersB ?? []
+      const writersC = a.protective?.writersC ?? []
+      if (writersB.length && writersC.length) {
+        const tb = taskOfWriter(ctx, 'baseline', writersB[0]!.routineId)
+        const tc = taskOfWriter(ctx, 'current', writersC[0]!.routineId)
+        if (tb && tc && (tb.type !== tc.type || (tb.rate ?? 0) !== (tc.rate ?? 0))) {
+          const describe = (t: { name: string; type: string; rate?: number }) =>
+            t.type === 'CONTINUOUS'
+              ? `continuous task ${t.name}`
+              : t.type === 'PERIODIC'
+                ? `periodic task ${t.name} (every ${t.rate?.toLocaleString('en-US') ?? '?'} ms)`
+                : `${t.type.toLowerCase()} task ${t.name}`
+          const slower = tc.type === 'EVENT' || (tc.type === 'PERIODIC' && (tb.type === 'CONTINUOUS' || (tc.rate ?? 0) > (tb.rate ?? 0)))
+          if (slower)
+            push(
+              'task',
+              `The logic of ${a.sf.name} moved from the ${describe(tb)} to the ${describe(tc)}.`,
+              [`${a.protective!.outC.label} is now written from the ${describe(tc)}; in the baseline it was written from the ${describe(tb)}.`],
+              [tc.type === 'EVENT' ? 'The function now runs only when its event fires.' : `The function may react up to ${(tc.rate ?? 0).toLocaleString('en-US')} ms after its trip condition occurs.`],
+              { routineId: writersC[0]!.routineId, tag: a.protective!.outC.label },
+            )
         }
       }
     }
@@ -461,7 +547,10 @@ export const ExecutionControlRule: Rule = {
     const baseline = new Set(ctx.baseline.scan.executionControl.map((x) => `${x.routineId}|${x.instruction.toLowerCase()}`))
     for (const x of ctx.current.scan.executionControl) {
       if (baseline.has(`${x.routineId}|${x.instruction.toLowerCase()}`)) continue
-      const sfIds = ctx.sf.filter((a) => a.coneC.has(`routine:${x.routineId}`)).map((a) => a.sf.id)
+      // SSV(Program|Task, X, Disable/Inhibit...) affects whatever runs in X, wherever the SSV itself sits.
+      const sfIds = ctx.sf
+        .filter((a) => (x.target ? a.coneC.has(x.target) || a.coneB.has(x.target) : a.coneC.has(`routine:${x.routineId}`)))
+        .map((a) => a.sf.id)
       if (sfIds.length === 0) continue
       const routine = ctx.current.index.routines.get(x.routineId)
       const where = routine ? `${routine.container.name}/${routine.name}` : x.routineId

@@ -94,6 +94,8 @@ export interface ScanDiagnostic {
   locs: string[]
   routineId?: string
   rung?: number
+  /** Cone anchors the construct affects (e.g. "program:safety" for an SSV that can disable it). */
+  anchors?: string[]
 }
 
 export interface LocMeta {
@@ -135,7 +137,7 @@ interface Resolved {
   literal?: number
 }
 
-const ALARM_MEMBERS_THAT_SILENCE = ['progdisable', 'progsuppress']
+const ALARM_MEMBERS_THAT_SILENCE = ['progdisable', 'progsuppress', 'operdisable', 'opersuppress', 'opershelve']
 const MEMBER_DISPLAY: Record<string, string> = { en: 'EN', dn: 'DN', tt: 'TT', cu: 'CU', cd: 'CD', in: 'In', enablein: 'EnableIn', '#preset': 'PRE' }
 
 export interface ScanOptions {
@@ -161,13 +163,15 @@ export class SymbolicScan {
   /** Locations read at least once (inputs of the scan). */
   readonly readLocs = new Set<string>()
   /** Rungs that contain execution-control instructions, as anchors. */
-  readonly executionControl: Array<{ anchor: string; instruction: string; routineId: string; rung: number }> = []
+  readonly executionControl: Array<{ anchor: string; instruction: string; routineId: string; rung: number; target?: string }> = []
 
   private rungProv = new Set<Anchor>()
   private rungRef: { routineId: string; rung: number; source?: SourceRef } = { routineId: '', rung: 0 }
   private readonly rungCache = new Map<string, ReturnType<typeof parseRung>>()
   private readonly activeRoutines = new Set<string>()
   private opaqueCounter = 0
+  /** End-of-scan values from the first pass, read as "previous scan" values in the second. */
+  private prevScan = new Map<string, number>()
 
   constructor(pool: ExprPool, index: ProjectIndex, opts: ScanOptions) {
     this.pool = pool
@@ -178,13 +182,47 @@ export class SymbolicScan {
 
   /* ------------------------------------------------------------ the scan */
 
+  /**
+   * Two passes. The first computes every location's end-of-scan value; the
+   * second runs the scan again with those values as "previous scan" values,
+   * so a location read before it is written in the scan sees what the scan
+   * itself wrote last time (steady state, inputs held constant). Without it a
+   * later rung that unlatches a trip input would be invisible.
+   */
   runFull(): void {
+    this.runPass()
+    const prev = new Map<string, number>()
+    for (const [loc, v] of this.cur) prev.set(loc, v.expr)
+    this.cur.clear()
+    this.writes.clear()
+    this.executedRoutines.clear()
+    this.routineBlocked.clear()
+    this.callSites.length = 0
+    this.timers.clear()
+    this.alarms.clear()
+    this.diagnostics.length = 0
+    this.readLocs.clear()
+    this.executionControl.length = 0
+    this.prevScan = prev
+    this.runPass()
+  }
+
+  private runPass(): void {
+    // Continuous tasks first, then periodic tasks by priority, then event
+    // tasks. A periodic task can preempt the continuous one at any point;
+    // running it afterwards makes its writes the last ones, which is the
+    // conservative choice for a write that could bypass a protective output.
+    const kindRank = (t: { type: string }) => (t.type === 'CONTINUOUS' ? 0 : t.type === 'EVENT' ? 2 : 1)
     const tasks = [...this.index.project.tasks]
       .map((t, i) => ({ t, i }))
-      .sort((a, b) => (a.t.priority ?? 100) - (b.t.priority ?? 100) || a.i - b.i)
+      .sort((a, b) => kindRank(a.t) - kindRank(b.t) || (a.t.priority ?? 100) - (b.t.priority ?? 100) || a.i - b.i)
       .map((x) => x.t)
     const blocks = this.index.executionBlocks()
     for (const task of tasks) {
+      const taskGuard =
+        task.type === 'EVENT'
+          ? this.pool.atom({ key: `opaque:event:${lc(task.name)}`, label: `⟨event task ${task.name} triggered⟩`, kind: 'opaque' })
+          : this.pool.TRUE
       for (const progName of task.scheduledPrograms) {
         const prog = this.index.programs.get(lc(progName))
         if (!prog) {
@@ -208,7 +246,7 @@ export class SymbolicScan {
         const frame: Frame = {
           program: prog.name,
           routineId: main.id,
-          guard: this.pool.TRUE,
+          guard: taskGuard,
           guardProv: new Set([`program:${lc(prog.name)}`, `task:${lc(task.name)}`]),
           depth: 0,
         }
@@ -292,7 +330,7 @@ export class SymbolicScan {
       return
     }
     if (this.activeRoutines.has(routine.id)) {
-      this.diag('EXECUTION_CONTROL', `Recursive call into ${where} is not modeled.`, where, [], routine.id)
+      this.diag('EXECUTION_CONTROL', `Recursive call into ${where} is not modeled; results for this routine are incomplete.`, where, [], this.rungRef.routineId || routine.id, this.rungRef.rung)
       return
     }
     this.activeRoutines.add(routine.id)
@@ -344,8 +382,12 @@ export class SymbolicScan {
     const targets: string[] = []
     for (const line of routine.stLines) {
       const code = line.text.replace(/\(\*[\s\S]*?\*\)/g, '').replace(/\/\/.*$/, '')
-      for (const m of code.matchAll(/([A-Za-z_\\][A-Za-z0-9_.:[\]\\]*)\s*:=/g)) {
-        const ref = m[1]!
+      const refs = [
+        ...[...code.matchAll(/([A-Za-z_\\][A-Za-z0-9_.:[\]\\]*)\s*:=/g)].map((m) => m[1]!),
+        // COP/CPS/MOV(src, dest, ...) write their second argument.
+        ...[...code.matchAll(/\b(?:COP|CPS|MOV)\s*\(\s*[^,()]+,\s*([A-Za-z_\\][A-Za-z0-9_.:[\]\\]*)/gi)].map((m) => m[1]!),
+      ]
+      for (const ref of refs) {
         this.rungRef = { routineId: routine.id, rung: line.number, source: line.source }
         this.rungProv = new Set([`routine:${routine.id}`])
         const r = this.resolve(ref, frame)
@@ -397,12 +439,12 @@ export class SymbolicScan {
     const onlyMcr = parsed.elements.length === 1 && parsed.elements[0]!.kind === 'ins' && parsed.elements[0]!.mnemonic === 'MCR'
     this.execSequence(parsed.elements, rcIn, frame, (ins, rc) => {
       const anchor = `rung:${routine.id}#${rungNumber}`
-      if (EXECUTION_CONTROL.has(ins.mnemonic) && ins.mnemonic !== 'LBL' && ins.mnemonic !== 'RET' && ins.mnemonic !== 'SBR') {
+      if (EXECUTION_CONTROL.has(ins.mnemonic) && ins.mnemonic !== 'LBL' && ins.mnemonic !== 'SBR' && !(ins.mnemonic === 'RET' && rc === this.pool.TRUE)) {
         this.executionControl.push({ anchor, instruction: `${ins.mnemonic}(${ins.operands.join(',')})`, routineId: routine.id, rung: rungNumber })
       }
       if (!control) return
       if (ins.mnemonic === 'JMP') control.onJump(ins.operands[0] ?? '', this.pool.and(frame.guard, rc))
-      else if (ins.mnemonic === 'TND') control.onTnd(this.pool.and(frame.guard, rc))
+      else if (ins.mnemonic === 'TND' || ins.mnemonic === 'RET') control.onTnd(this.pool.and(frame.guard, rc))
       else if (ins.mnemonic === 'MCR') control.onMcr(rc, onlyMcr)
     })
     this.rungProv = savedProv
@@ -491,7 +533,16 @@ export class SymbolicScan {
       onControl(ins, rc)
       return rc
     }
-    if (m === 'SSV') return rc
+    if (m === 'SSV') {
+      const cls = lc(op(0))
+      const attr = lc(op(2))
+      if ((cls === 'program' || cls === 'task' || cls === 'routine') && /disable|inhibit/.test(attr)) {
+        const target = `${cls === 'routine' ? 'routine' : cls}:${lc(op(1))}`
+        this.executionControl.push({ anchor: `rung:${this.rungRef.routineId}#${this.rungRef.rung}`, instruction: this.insText(ins), routineId: this.rungRef.routineId, rung: this.rungRef.rung, target })
+        this.diag('EXECUTION_CONTROL', `${this.insText(ins)} can disable ${cls} ${op(1)} at runtime; INTERLOCK does not model runtime attribute changes.`, this.rungWhere(), [], this.rungRef.routineId, this.rungRef.rung, [target])
+      }
+      return rc
+    }
     const def = this.index.modules.get(lc(m))
     if (def) {
       this.callModule(ins, def, rc, frame)
@@ -590,7 +641,14 @@ export class SymbolicScan {
     if (cur) for (const a of cur.prov) this.rungProv.add(a)
     this.rungProv.add(`loc:${r.loc}`)
     const meta = this.meta.get(r.loc)
-    return { subject: `num:${r.loc}`, label: r.label, integer: meta?.integer ?? false }
+    // A value logic writes (MOV, CPT, ...) is not the raw input: the subject
+    // carries the expression that produced it, so a changed or new write is
+    // a different subject and can never compare as "equivalent".
+    const written = cur?.expr ?? this.prevScan.get(r.loc)
+    if (!cur) this.rungProv.add(`prev:${r.loc}`)
+    const subject = written === undefined ? `num:${r.loc}` : `num:${r.loc}@${written}`
+    const label = written === undefined ? r.label : `${r.label} (as written by logic)`
+    return { subject, label, integer: meta?.integer ?? false }
   }
 
   private timer(ins: RllInstruction, rc: number, frame: Frame): void {
@@ -657,7 +715,8 @@ export class SymbolicScan {
     const text = this.insText(ins)
     if (this.mode === 'rung' || frame.module) {
       const pseudo: Resolved = { loc: `#jsr:${lc(frame.program)}/${lc(name)}`, label: `JSR ${name}` }
-      this.writeValue(pseudo, frame, rc, 'OTE', text, 'OTHER')
+      const value = ins.operands.length > 2 ? this.pool.and(rc, this.opaqueAtom(`jsr:${this.canonicalInstruction(ins, frame)}`, text)) : rc
+      this.writeValue(pseudo, frame, value, 'OTE', text, 'OTHER')
       return
     }
     const target = this.index.routine(frame.program, name)
@@ -665,11 +724,28 @@ export class SymbolicScan {
       this.diag('UNRESOLVED_REFERENCE', `JSR target ${name} is not a routine of program ${frame.program}.`, this.rungWhere(), [], this.rungRef.routineId, this.rungRef.rung)
       return
     }
-    if (ins.operands.length > 2) {
-      this.diag('INSTRUCTION', `JSR(${name}) passes parameters; parameter passing is not modeled.`, this.rungWhere(), [], this.rungRef.routineId, this.rungRef.rung)
-    }
     const guardProv = new Set([...frame.guardProv, ...this.rungProv, `rung:${this.rungRef.routineId}#${this.rungRef.rung}`, `routine:${this.rungRef.routineId}`])
     const child: Frame = { program: frame.program, routineId: target.id, guard: this.pool.and(frame.guard, rc), guardProv, depth: frame.depth + 1 }
+    // Input parameters: JSR(Routine, n, in1, ...) copies each input into the
+    // matching SBR(p1, ...) operand of the subroutine's first rung.
+    const inputs = ins.operands.slice(2)
+    if (inputs.length) {
+      const first = target.rungs[0]
+      const sbr = first ? instructionsOf(parseRung(first.text).elements).find((x) => x.mnemonic === 'SBR') : undefined
+      if (!sbr) {
+        this.diag('INSTRUCTION', `JSR(${name}) passes ${inputs.length} parameter(s) but ${target.name} has no SBR in its first rung.`, this.rungWhere(), [], this.rungRef.routineId, this.rungRef.rung)
+      } else {
+        inputs.forEach((arg, i) => {
+          const param = sbr.operands[i]
+          if (!param || !isTagOperand(param)) return
+          const dest = this.resolve(param, child)
+          if (!dest || dest.literal !== undefined) return
+          const meta = this.meta.get(dest.loc)
+          const value = meta?.integer === false || !isTagOperand(arg) ? this.bitOperandValue(arg, frame) : this.readBit(arg, frame)
+          this.writeValue(dest, frame, value, 'COPY', text, 'OTHER')
+        })
+      }
+    }
     const saved = { prov: this.rungProv, ref: this.rungRef }
     this.runRoutine(target, child)
     this.rungProv = saved.prov
@@ -701,6 +777,14 @@ export class SymbolicScan {
       if (v) {
         silence = p.or(silence, v.expr)
         for (const x of v.prov) this.rungProv.add(x)
+        continue
+      }
+      // Written later in the scan: the alarm sees last scan's value.
+      const prev = this.prevScan.get(ml)
+      if (prev !== undefined) {
+        silence = p.or(silence, prev)
+        this.rungProv.add(`loc:${ml}`)
+        this.rungProv.add(`prev:${ml}`)
       }
     }
     this.writeValue({ loc: notifyLoc, label: `${a.label} notification` }, frame, p.and(rc, p.not(silence)), 'OTE', text, 'ALARM')
@@ -844,7 +928,8 @@ export class SymbolicScan {
     }
     this.rungProv.add(`loc:${r.loc}`)
     this.rungProv.add(`prev:${r.loc}`)
-    return this.atomForLoc(r)
+    const prev = this.prevScan.get(r.loc)
+    return prev ?? this.atomForLoc(r)
   }
 
   atomForLoc(r: { loc: string; label: string }): number {
@@ -1031,8 +1116,9 @@ export class SymbolicScan {
     return [...out]
   }
 
-  private diag(kind: UnsupportedKind, detail: string, location: string, locs: string[], routineId?: string, rung?: number) {
+  private diag(kind: UnsupportedKind, detail: string, location: string, locs: string[], routineId?: string, rung?: number, anchors?: string[]) {
     const d: ScanDiagnostic = { kind, detail, location, locs }
+    if (anchors) d.anchors = anchors
     if (routineId !== undefined) d.routineId = routineId
     if (rung !== undefined) d.rung = rung
     this.diagnostics.push(d)

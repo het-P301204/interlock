@@ -4,6 +4,7 @@ import {
   SharedModulePropagationRule, UndeclaredSafetyCoverageRule,
 } from './changes.ts'
 import { AlarmSuppressionRule } from './notification.ts'
+import { AlarmConfigurationRule, OverriddenWriterRule } from './configuration.ts'
 import {
   ExecutionControlRule, InterlockWeakeningRule, NewInhibitTermRule, PermissiveWeakeningRule, ProtectionStrengthenedRule,
   ProtectiveOutputBypassRule, RemovedProtectivePathRule, SetpointRelaxationRule, ShutdownWeakeningRule, TripDelayRule,
@@ -30,6 +31,8 @@ export const RULES: Rule[] = [
   DeclarationResolutionRule,
   ModuleRevisionRule,
   ExternalWriteAccessRule,
+  AlarmConfigurationRule,
+  OverriddenWriterRule,
 ]
 
 export const RULE_INFO: RuleInfo[] = RULES.map(({ id, title, description, severity }) => ({ id, title, description, severity }))

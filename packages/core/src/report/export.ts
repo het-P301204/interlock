@@ -33,7 +33,7 @@ export function toCsv(r: AnalysisResult): string {
 
 /** Escape inline Markdown so user text cannot create links, images, HTML or emphasis. */
 export function mdInline(v: string): string {
-  return cleanText(v).replace(/[\\`*_{}[\]()<>#+!|&~]/g, (c) => `\\${c}`).replace(/\r?\n/g, ' ')
+  return cleanText(v).replace(/[\\`*_{}[\]()<>#+!|&~]/g, (c) => `\\${c}`).replace(/\r\n|\r|\n/g, ' ')
 }
 
 export function mdCell(v: string): string {
@@ -41,7 +41,7 @@ export function mdCell(v: string): string {
 }
 
 function mdCode(v: string): string {
-  const text = cleanText(v)
+  const text = cleanText(v).replace(/\r\n?/g, '\n')
   const fence = '`'.repeat(Math.max(3, ...[...text.matchAll(/`+/g)].map((m) => m[0].length + 1)))
   return `${fence}text\n${text}\n${fence}`
 }

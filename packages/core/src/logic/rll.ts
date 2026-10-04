@@ -107,6 +107,10 @@ export function parseRung(text: string): RllParseResult {
     return { kind: 'ins', mnemonic: mnemonic.toUpperCase(), operands, offset: start }
   }
 
+  // Logix itself allows only shallow branch nesting; anything deeper is
+  // hostile or corrupt, and bounding it keeps every walker's recursion safe.
+  const MAX_DEPTH = 64
+  let depth = 0
   // Parse a sequence until one of the terminators; returns the elements.
   const readSequence = (terminators: string): RllElement[] => {
     const seq: RllElement[] = []
@@ -117,6 +121,11 @@ export function parseRung(text: string): RllParseResult {
       if (terminators.includes(c)) return seq
       if (c === '[') {
         const offset = i
+        if (depth >= MAX_DEPTH) {
+          errors.push(`Branch nesting deeper than ${MAX_DEPTH} levels at offset ${i}`)
+          return seq
+        }
+        depth++
         i++
         const legs: RllElement[][] = []
         for (;;) {
@@ -133,6 +142,7 @@ export function parseRung(text: string): RllParseResult {
           errors.push(`Unterminated branch starting at offset ${offset}`)
           return seq
         }
+        depth--
         seq.push({ kind: 'branch', legs, offset })
         continue
       }

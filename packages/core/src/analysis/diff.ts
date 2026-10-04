@@ -408,7 +408,7 @@ function tagLabel(t: Tag): string {
 function diffTags(a: Tag[], b: Tag[], push: (d: Draft) => void, module?: string, moduleAnchor?: string) {
   const am = new Map(a.map((t) => [tagKey(t), t]))
   const bm = new Map(b.map((t) => [tagKey(t), t]))
-  const anchorsOf = (t: Tag) => (moduleAnchor ? [moduleAnchor] : [`tag:${tagKey(t)}`])
+  const anchorsOf = (t: Tag) => (moduleAnchor ? [moduleAnchor] : [`loc:${tagKey(t)}`])
   const entity = (t: Tag): ChangeEntity => (module ? { type: 'tag', name: t.name, container: module } : t.scope.kind === 'program' ? { type: 'tag', name: t.name, container: t.scope.program } : { type: 'tag', name: t.name })
   for (const [k, t] of am)
     if (!bm.has(k)) push({ op: 'removed', category: 'configuration', entity: entity(t), summary: `Tag ${tagLabel(t)} removed`, before: `${t.dataType}${t.aliasFor ? ` alias for ${t.aliasFor}` : ''}`, baselineSource: t.source, anchors: { baseline: anchorsOf(t) } })

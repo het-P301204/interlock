@@ -72,8 +72,12 @@ export interface SfAnalysis {
   notification?: NotificationState
   coneB: Set<Anchor>
   coneC: Set<Anchor>
-  /** True when at least one declared path could be compared in both projects. */
+  /** True when every declared path could be compared in both projects and every comparison was decided. */
   analyzable: boolean
+  /** Per-path decision state, merged by the pipeline. */
+  decided: { protective?: boolean; notification?: boolean }
+  /** The declared protective output resolves to a different storage location than in the baseline. */
+  shadowed?: boolean
   notes: string[]
 }
 
@@ -160,7 +164,7 @@ export function analyzeSafetyFunction(pool: ExprPool, sf: SafetyFunction, b: Sid
     for (const a of expandCone(scan, scan.cone(loc))) target.add(a)
   }
 
-  const out: SfAnalysis = { sf, resolution, coneB, coneC, analyzable: false, notes }
+  const out: SfAnalysis = { sf, resolution, coneB, coneC, analyzable: false, decided: {}, notes }
 
   /* protective output */
   if (sf.protectiveOutput) {
@@ -168,6 +172,16 @@ export function analyzeSafetyFunction(pool: ExprPool, sf: SafetyFunction, b: Sid
     resolution.protectiveOutput = state(r.b, r.c)
     if (!r.c) notes.push(`Declared protective output ${sf.protectiveOutput.tag} is not a tag in the current project.`)
     if (!r.b) notes.push(`Declared protective output ${sf.protectiveOutput.tag} is not a tag in the baseline project.`)
+    if (r.b && r.c && r.b.literal === undefined && r.c.literal === undefined && r.b.loc !== r.c.loc) {
+      // The declared name now resolves to a different storage location (for
+      // example a new program-scoped tag that shadows the controller tag
+      // wired to the I/O). Analyze the location the baseline protected: that
+      // is the one the equipment still listens to.
+      const still = c.index.resolveBase(r.b.label.split('.')[0]!)
+      notes.push(`${sf.protectiveOutput.tag} now resolves to a different tag in the current project (${r.c.loc.startsWith('p:') ? `program-scoped ${r.c.label}` : r.c.label}) than in the baseline (${r.b.loc.startsWith('p:') ? `program-scoped ${r.b.label}` : r.b.label}). INTERLOCK analyzes the baseline location${still ? '' : ', which no longer exists'}.`)
+      out.shadowed = true
+      if (still) r.c = { ...r.b }
+    }
     if (r.b && r.c && r.b.literal === undefined && r.c.literal === undefined) {
       const vB = b.scan.valueOf(r.b)
       const vC = c.scan.valueOf(r.c)
@@ -195,7 +209,7 @@ export function analyzeSafetyFunction(pool: ExprPool, sf: SafetyFunction, b: Sid
           return { ...w, reason }
         })
       out.protective = { outB: r.b, outC: r.c, tripB, tripC, raw, writersB, writersC, newWriters, lostWriters }
-      out.analyzable = raw.verdict !== 'NOT_DECIDED'
+      out.decided.protective = raw.verdict !== 'NOT_DECIDED'
       if (writersC.length === 0) notes.push(`No executing logic writes ${r.c.label} in the current project; its value is whatever it held at the start of the scan.`)
       if (writersC.length > 1) notes.push(`${r.c.label} has ${writersC.length} writers in the current scan; the last executed one determines the output.`)
       addCone(b.scan, coneB, r.b.loc)
@@ -227,7 +241,10 @@ export function analyzeSafetyFunction(pool: ExprPool, sf: SafetyFunction, b: Sid
       else if (sc.mechanism === 'NOT_EXECUTED' && sb.mechanism !== 'NOT_EXECUTED') status = 'BROKEN'
       else if (raw.verdict === 'NEVER_FIRES' || !raw.afterSatisfiable) status = raw.beforeSatisfiable ? 'BROKEN' : 'INTACT'
       else if (isWeakening(raw.verdict)) status = suppressors.length ? 'SUPPRESSED' : 'DEGRADED'
+      else if (sb.mechanism === 'ALMD' && sc.mechanism === 'BOOL_TAG') status = 'DEGRADED'
       else status = 'INTACT'
+      if (sb.mechanism === 'ALMD' && sc.mechanism === 'BOOL_TAG')
+        notes.push(`${r.c.label} is no longer driven by an ALMD instruction but by a plain BOOL; alarm-system features (acknowledgement, shelving, history, severity) and any HMI subscription to the alarm instruction are lost.`)
       const stages = notificationStages(sf, raw, status, sb.mechanism, sc.mechanism, r.c.label, suppressors)
       const ns: NotificationState = {
         alarmB: r.b,
@@ -244,7 +261,7 @@ export function analyzeSafetyFunction(pool: ExprPool, sf: SafetyFunction, b: Sid
       if (sb.use) ns.useB = sb.use
       if (sc.use) ns.useC = sc.use
       out.notification = ns
-      if (raw && raw.verdict !== 'NOT_DECIDED') out.analyzable = true
+      out.decided.notification = !!raw && raw.verdict !== 'NOT_DECIDED'
       if (sb.mechanism === 'BOOL_TAG' && b.scan.executedWrites(r.b.loc).length === 0)
         notes.push(`Alarm tag ${r.b.label} is not written by baseline logic; INTERLOCK treats it as set outside the controller.`)
       addCone(b.scan, coneB, sb.loc)
@@ -252,6 +269,7 @@ export function analyzeSafetyFunction(pool: ExprPool, sf: SafetyFunction, b: Sid
     }
   }
   if (!sf.protectiveOutput && !sf.alarm) notes.push('The declaration names neither a protective output nor an alarm, so there is nothing to analyze.')
+  out.analyzable = Object.keys(out.decided).length > 0 && Object.values(out.decided).every(Boolean)
   return out
 }
 

@@ -97,11 +97,20 @@ function pickLang(els: XmlElement[]): XmlElement | undefined {
   return els.find((e) => attr(e, 'Lang') === 'en-US') ?? els[0]
 }
 
+export const ALARM_CONFIG_KEYS = [
+  'Severity', 'MinDurationPRE', 'ShelveDuration', 'MaxShelveDuration', 'Condition', 'AckRequired', 'Latched',
+  'ProgDisable', 'OperDisable', 'ProgSuppress', 'OperSuppress', 'OperShelve',
+] as const
+
 function alarmValue(alarm: XmlElement): string | undefined {
   const parts: string[] = []
   const params = firstChild(alarm, 'AlarmDigitalParameters')
-  const severity = params === undefined ? undefined : attr(params, 'Severity')
-  if (severity !== undefined) parts.push(`Severity=${severity.trim()}`)
+  // Configuration that changes when and whether the alarm notifies; runtime
+  // state (In, Acked, timestamps) is deliberately left out.
+  for (const key of ALARM_CONFIG_KEYS) {
+    const v = params === undefined ? undefined : attr(params, key)
+    if (v !== undefined) parts.push(`${key}=${v.trim()}`)
+  }
   const messages = childAt(alarm, 'AlarmConfig', 'Messages')
   if (messages !== undefined) {
     const am = childrenNamed(messages, 'Message').find((m) => attr(m, 'Type') === 'AM')
