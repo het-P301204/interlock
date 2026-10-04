@@ -54,7 +54,7 @@ export function Tabs({ label, idBase, items, value, onChange, className, variant
   if (variant === 'steps') {
     const activeIndex = items.findIndex((t) => t.id === value)
     return (
-      <div role="tablist" aria-label={label} className={cx('il-scroll-thin relative grid max-w-full auto-cols-[minmax(10.5rem,1fr)] grid-flow-col gap-2 overflow-x-auto pb-1', className)}>
+      <div role="tablist" aria-label={label} className={cx('il-scroll-thin relative grid max-w-full auto-cols-[minmax(10.5rem,1fr)] grid-flow-col gap-2 overflow-x-auto overflow-y-hidden pb-1', className)}>
         {items.map((item, i) => {
           const selected = item.id === value
           const passed = i < activeIndex
@@ -96,7 +96,7 @@ export function Tabs({ label, idBase, items, value, onChange, className, variant
   }
 
   return (
-    <div role="tablist" aria-label={label} className={cx('il-scroll-thin relative flex max-w-full gap-1 overflow-x-auto border-b border-line', className)}>
+    <div role="tablist" aria-label={label} className={cx('il-scroll-thin relative flex max-w-full gap-1 overflow-x-auto overflow-y-hidden border-b border-line', className)}>
       {items.map((item, i) => {
         const selected = item.id === value
         return (

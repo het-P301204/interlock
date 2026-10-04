@@ -19,9 +19,9 @@ const RAIL: Record<Finding['severity'], string> = {
   INFO: 'bg-iris',
 }
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
+function Fact({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <div className={cx('flex min-w-0 flex-col gap-1', className)}>
       <dt className="il-label">{label}</dt>
       <dd className="il-ident min-w-0 text-sm text-ink">{children}</dd>
     </div>
@@ -72,21 +72,19 @@ export function FindingCard({ finding: f, sfs }: { finding: Finding; sfs: Map<st
         </div>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
-          <div className="col-span-2 lg:col-span-1">
-            <Fact label="Safety functions">
-              {f.safetyFunctionIds.length === 0 ? (
-                <span className="text-ink-2">None declared</span>
-              ) : (
-                <span className="flex flex-wrap gap-x-3 gap-y-1">
-                  {f.safetyFunctionIds.map((id) => (
-                    <span key={id} className="min-w-0">
-                      <span className="font-mono text-xs font-semibold">{id}</span> <span className="text-ink-2">{sfs.get(id)?.function.name}</span>
-                    </span>
-                  ))}
-                </span>
-              )}
-            </Fact>
-          </div>
+          <Fact label="Safety functions" className="col-span-2 lg:col-span-1">
+            {f.safetyFunctionIds.length === 0 ? (
+              <span className="text-ink-2">None declared</span>
+            ) : (
+              <span className="flex flex-wrap gap-x-3 gap-y-1">
+                {f.safetyFunctionIds.map((id) => (
+                  <span key={id} className="min-w-0">
+                    <span className="font-mono text-xs font-semibold">{id}</span> <span className="text-ink-2">{sfs.get(id)?.function.name}</span>
+                  </span>
+                ))}
+              </span>
+            )}
+          </Fact>
           <Fact label="Module">{f.module ? <span className="font-mono text-data">{f.module}</span> : <span className="text-ink-2">—</span>}</Fact>
           <Fact label="Blast radius">
             {f.blastRadius ? (

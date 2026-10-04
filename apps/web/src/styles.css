@@ -8,7 +8,7 @@
  *
  * Measured contrast (WCAG 2.x), light mode on --paper / --paper-2:
  *   ink 16.1 / 14.7   ink-2 6.3 / 5.8   ink-3 4.9 / 4.5
- *   coral-ink 5.4 / 4.9   marigold-ink 5.2 / 4.7   sage-ink 5.9 / 5.4   iris-ink 6.5 / 6.0
+ *   coral-ink 5.6 / 5.2   marigold-ink 5.2 / 4.7   sage-ink 5.9 / 5.4   iris-ink 6.5 / 6.0
  *   (ink-3 drops to 4.1 on --paper-3: never put ink-3 text on paper-3.)
  * Dark mode on --paper (#151617) / --surface-raised: ink 15.5 / 12.9,
  *   ink-2 8.7 / 7.2, ink-3 5.8 / 4.8, coral-ink 6.7 / 5.5,
@@ -37,7 +37,7 @@
   --inverse-ink: 242 237 227;
   --inverse-ink-2: 176 171 159;
   --coral: 238 96 72;
-  --coral-ink: 179 54 31;
+  --coral-ink: 174 52 29;
   --marigold: 230 184 75;
   --marigold-ink: 131 95 11;
   --sage: 130 167 125;

@@ -104,7 +104,8 @@ export function LogicText({ text, language = 'rung', marks, units: unitsProp, cl
         if (mark === 'added')
           return (
             <Fragment key={i}>
-            <ins className="rounded-[4px] bg-marigold/40 px-[2px] no-underline shadow-[inset_0_-2px_0_rgb(var(--marigold-ink)/0.55)] [box-decoration-break:clone]">
+            <ins className="rounded-[4px] bg-marigold/40 px-[2px] no-underline shadow-[inset_0_-2px_0_rgb(var(--marigold-ink)/0.55)] [box-decoration-break:clone] [&_.text-ink-2]:text-ink [&_.text-ink-3]:text-ink">
+              {/* Muted token colours fall below 4.5:1 on the marigold highlight in dark mode: added runs use full ink. */}
               <span className="sr-only">added: </span>
               {content}
             </ins>

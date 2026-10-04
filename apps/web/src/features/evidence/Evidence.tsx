@@ -78,10 +78,13 @@ function Row({ label, children, copy }: { label: string; children: ReactNode; co
   return (
     <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 border-b border-line py-2.5 last:border-0 sm:grid-cols-[8.5rem_minmax(0,1fr)_auto] sm:items-start">
       <dt className="il-label pt-[3px]">{label}</dt>
-      <dd className="il-ident min-w-0 font-mono text-data text-ink">{children}</dd>
-      {copy ? <div className="-my-1 justify-self-start sm:justify-self-end">
-        <CopyButton text={copy.text} label={copy.label} />
-      </div> : <span className="hidden sm:block" />}
+      {/* A <dl> group may hold only <dt>/<dd>: the copy action is a second <dd>, and a row without one spans both columns. */}
+      <dd className={cx('il-ident min-w-0 font-mono text-data text-ink', !copy && 'sm:col-span-2')}>{children}</dd>
+      {copy && (
+        <dd className="-my-1 justify-self-start sm:justify-self-end">
+          <CopyButton text={copy.text} label={copy.label} />
+        </dd>
+      )}
     </div>
   )
 }

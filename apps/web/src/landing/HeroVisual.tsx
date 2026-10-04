@@ -352,7 +352,7 @@ function ResultPanel({ phase, instant }: { phase: Phase; instant: boolean }) {
                 className="ml-1 rounded-[4px] px-1 no-underline [box-decoration-break:clone]"
               >
                 <span className="sr-only">added: </span>
-                <span className="text-ink-2">AND</span> <span className="font-semibold">NOT</span> Maintenance_Mode
+                AND <span className="font-semibold">NOT</span> Maintenance_Mode
               </motion.ins>
             )}
           </AnimatePresence>
