@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in INTERLOCK (web app, API, CLI or engine) does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Do not attach real plant exports or safety manifests**: they describe
+        industrial control systems. Reproduce with the synthetic fixtures in `fixtures/` or a minimal,
+        sanitised file. Security vulnerabilities: please report privately instead of opening an issue.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options: [Web app, API, CLI, Engine / report output, Container / deployment, Other]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `node apps/cli/src/main.ts --version`, or `GET /api/health`.
+      placeholder: interlock 0.1.0 (engine 1.0.0)
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Commands, requests or clicks. Name the fixture or scenario id if one reproduces it.
+      placeholder: node apps/cli/src/main.ts scenario 04 --format sarif
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node version, browser, container or local.
