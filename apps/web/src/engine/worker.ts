@@ -105,7 +105,11 @@ async function handle(req: EngineRequest): Promise<unknown> {
 }
 
 scope.addEventListener('message', (e) => {
-  const req = e.data
+  // A dedicated worker receives messages only from the page that created it
+  // (MessageEvent.origin is empty here); still, act only on well-formed requests.
+  const raw = e.data as unknown
+  if (!raw || typeof raw !== 'object' || typeof (raw as { id?: unknown }).id !== 'number' || typeof (raw as { op?: unknown }).op !== 'string') return
+  const req = raw as EngineRequest
   const started = performance.now()
   handle(req).then(
     (value) => post({ id: req.id, kind: 'result', value, elapsedMs: performance.now() - started }),

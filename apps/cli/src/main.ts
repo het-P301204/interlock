@@ -12,7 +12,7 @@
  * Runs the same deterministic engine as the web app and the API, in process.
  * Reads only the files named on the command line; writes only --out.
  */
-import { readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+import { closeSync, fstatSync, openSync, readFileSync, readSync, realpathSync, writeFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -138,18 +138,40 @@ function maxInputBytes(): number {
   return (Number.isFinite(mb) && mb > 0 ? mb : 64) * 1024 * 1024
 }
 
-function readInput(path: string): FileInput {
-  let size: number
+/**
+ * Open once, check size and type on the open descriptor, then read through
+ * that same descriptor: the file cannot be swapped between check and read.
+ */
+function readBounded(path: string, limit: number, limitText: string): Buffer {
+  let fd: number
   try {
-    const st = statSync(path)
+    fd = openSync(path, 'r')
+  } catch (e) {
+    throw new CliError(`Cannot read ${term(path)}: ${(e as NodeJS.ErrnoException).code ?? 'error'}.`)
+  }
+  try {
+    const st = fstatSync(fd)
     if (!st.isFile()) throw new CliError(`${term(path)} is not a file.`)
-    size = st.size
+    if (st.size > limit) throw new CliError(`${term(path)} is larger than ${limitText}.`)
+    const buf = Buffer.alloc(st.size)
+    let off = 0
+    while (off < st.size) {
+      const n = readSync(fd, buf, off, st.size - off, off)
+      if (n === 0) break
+      off += n
+    }
+    return buf.subarray(0, off)
   } catch (e) {
     if (e instanceof CliError) throw e
     throw new CliError(`Cannot read ${term(path)}: ${(e as NodeJS.ErrnoException).code ?? 'error'}.`)
+  } finally {
+    closeSync(fd)
   }
-  if (size > maxInputBytes()) throw new CliError(`${term(path)} is larger than ${maxInputBytes() / 1024 / 1024} MB (INTERLOCK_MAX_UPLOAD_MB).`)
-  return { name: basename(path), bytes: new Uint8Array(readFileSync(path)) }
+}
+
+function readInput(path: string): FileInput {
+  const bytes = readBounded(path, maxInputBytes(), `${maxInputBytes() / 1024 / 1024} MB (INTERLOCK_MAX_UPLOAD_MB)`)
+  return { name: basename(path), bytes: new Uint8Array(bytes) }
 }
 
 function readManifest(path: string | undefined, required: boolean): SafetyManifest | undefined {
@@ -157,14 +179,7 @@ function readManifest(path: string | undefined, required: boolean): SafetyManife
     if (required) throw new CliError('analyze needs --manifest <safety.json>: INTERLOCK only reasons relative to declared safety functions.')
     return undefined
   }
-  let text: string
-  try {
-    if (statSync(path).size > 2 * 1024 * 1024) throw new CliError(`${term(path)} is larger than 2 MB.`)
-    text = readFileSync(path, 'utf8')
-  } catch (e) {
-    if (e instanceof CliError) throw e
-    throw new CliError(`Cannot read ${term(path)}: ${(e as NodeJS.ErrnoException).code ?? 'error'}.`)
-  }
+  const text = readBounded(path, 2 * 1024 * 1024, '2 MB').toString('utf8')
   const v = parseManifestText(text)
   if (!v.ok) throw new CliError(`The safety manifest ${term(path)} is not valid.`, v.issues.map(term))
   return v.manifest

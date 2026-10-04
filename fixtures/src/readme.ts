@@ -6,7 +6,7 @@ import type { SafetyManifest } from '../../packages/core/src/model/safety.ts'
 import type { ControllerModel, Expected, ExpectedFinding, ScenarioRegistry, TagDef } from './types.ts'
 
 function cell(text: string): string {
-  return text.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+  return text.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ')
 }
 
 function code(text: string): string {

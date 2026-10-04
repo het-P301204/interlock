@@ -53,7 +53,7 @@ export const plcopenAdapter = planned({
   vendor: 'PLCopen',
   extensions: ['.xml'],
   formatName: 'PLCopen XML',
-  sniff: (head) => head.includes('<project') && head.includes('http://www.plcopen.org/xml/tc6'),
+  sniff: (head) => /<project\b[^>]*\bxmlns\s*=\s*["']http:\/\/www\.plcopen\.org\/xml\/tc6[^"']*["']/.test(head),
 })
 
 export const siemensTiaAdapter = planned({

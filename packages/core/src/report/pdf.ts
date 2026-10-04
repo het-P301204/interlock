@@ -283,7 +283,8 @@ function assemble(L: Layout, info: { title: string; created: string }): Uint8Arr
   }
   objects[catalog - 1] = `<< /Type /Catalog /Pages ${pages} 0 R >>`
   objects[pages - 1] = `<< /Type /Pages /Kids [${kids.map((k) => `${k} 0 R`).join(' ')}] /Count ${kids.length} >>`
-  const date = info.created.replace(/[-:T]/g, '').replace(/\..*$/, '').replace(/Z$/, '').slice(0, 14)
+  // YYYYMMDDHHmmSS from an ISO timestamp: keep the first 14 digits.
+  const date = info.created.replace(/\D/g, '').slice(0, 14)
   const infoObj = add(`<< /Title ${pdfString(encodeWinAnsi(info.title))} /Producer (INTERLOCK report writer) /CreationDate (D:${date}Z) >>`)
 
   let out = '%PDF-1.4\n%âãÏÓ\n'
