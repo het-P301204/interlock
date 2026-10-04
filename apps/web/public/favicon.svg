@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Simplified INTERLOCK contact for 16-32px: heavier strokes, shorter leads. -->
+  <rect width="32" height="32" rx="8" fill="#151617" />
+  <g fill="none" stroke="#F5F1E8" stroke-linecap="round" stroke-width="3">
+    <path d="M4 16H9.5" />
+    <path d="M22.5 16H28" />
+    <path d="M10 8.5V23.5" />
+    <path d="M22 8.5V23.5" />
+  </g>
+  <path d="M13.2 22.2L18.8 9.8" fill="none" stroke="#EE6048" stroke-linecap="round" stroke-width="3.2" />
+</svg>

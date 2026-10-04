@@ -1,0 +1,232 @@
+/*
+ * INTERLOCK base stylesheet.
+ *
+ * Tokens are RGB channel triples so Tailwind opacity modifiers compose
+ * (`bg-coral/15`). Light mode is primary; dark mode is graphite with warm
+ * white. Accents are semantic only (coral critical, marigold high, sage
+ * positive, iris informational); `*-ink` variants are the text-safe tones.
+ *
+ * Measured contrast (WCAG 2.x), light mode on --paper / --paper-2:
+ *   ink 16.1 / 14.7   ink-2 6.3 / 5.8   ink-3 4.9 / 4.5
+ *   coral-ink 5.4 / 4.9   marigold-ink 5.2 / 4.7   sage-ink 5.9 / 5.4   iris-ink 6.5 / 6.0
+ *   (ink-3 drops to 4.1 on --paper-3: never put ink-3 text on paper-3.)
+ * Dark mode on --paper (#151617) / --surface-raised: ink 15.5 / 12.9,
+ *   ink-2 8.7 / 7.2, ink-3 5.8 / 4.8, coral-ink 6.7 / 5.5,
+ *   marigold-ink 10.9 / 9.0, sage-ink 9.1 / 7.5, iris-ink 8.4 / 6.9
+ * Filled accent chips always carry --ink-fixed (charcoal) text: coral 5.5,
+ *   marigold 9.8, sage 6.7, iris 5.9.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --paper: 245 241 232;
+  --paper-2: 236 231 220;
+  --paper-3: 226 220 207;
+  --surface: 251 249 244;
+  --surface-raised: 255 254 251;
+  --ink: 21 22 23;
+  --ink-2: 90 88 82;
+  --ink-3: 107 104 95;
+  --line: 218 211 197;
+  --line-strong: 192 183 166;
+  --inverse: 21 22 23;
+  --inverse-ink: 242 237 227;
+  --inverse-ink-2: 176 171 159;
+  --coral: 238 96 72;
+  --coral-ink: 179 54 31;
+  --marigold: 230 184 75;
+  --marigold-ink: 131 95 11;
+  --sage: 130 167 125;
+  --sage-ink: 61 102 56;
+  --iris: 155 139 196;
+  --iris-ink: 91 74 148;
+  --focus: 21 22 23;
+  --shadow: 66 52 30;
+  --ink-fixed: 21 22 23;
+  --grid-line: 21 22 23;
+  --grid-alpha: 0.055;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: 21 22 23;
+  --paper-2: 28 30 31;
+  --paper-3: 38 40 42;
+  --surface: 29 31 32;
+  --surface-raised: 37 39 41;
+  --ink: 242 237 227;
+  --ink-2: 184 179 167;
+  --ink-3: 150 145 134;
+  --line: 52 55 58;
+  --line-strong: 74 77 80;
+  --inverse: 242 237 227;
+  --inverse-ink: 21 22 23;
+  --inverse-ink-2: 90 88 82;
+  --coral: 238 96 72;
+  --coral-ink: 242 122 100;
+  --marigold: 230 184 75;
+  --marigold-ink: 235 196 106;
+  --sage: 130 167 125;
+  --sage-ink: 157 193 152;
+  --iris: 155 139 196;
+  --iris-ink: 182 169 220;
+  --focus: 242 237 227;
+  --shadow: 0 0 0;
+  --grid-line: 242 237 227;
+  --grid-alpha: 0.045;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+    overflow-wrap: break-word;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgb(var(--marigold) / 0.45);
+    color: rgb(var(--ink));
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    @apply font-mono;
+    font-feature-settings: 'zero' 1;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@layer components {
+  /* Mono uppercase label used for engineering metadata. */
+  .il-label {
+    @apply font-mono text-label uppercase text-ink-2;
+  }
+
+  /* User-supplied identifiers (tag, routine, file names) wrap anywhere. */
+  .il-ident {
+    overflow-wrap: anywhere;
+    word-break: normal;
+    min-width: 0;
+  }
+
+  .il-num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Drafting-paper hairline grid, used only behind schematic illustrations. */
+  .il-drafting {
+    background-image:
+      linear-gradient(rgb(var(--grid-line) / var(--grid-alpha)) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--grid-line) / var(--grid-alpha)) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: -1px -1px;
+  }
+
+  .il-rule {
+    @apply border-t border-line;
+  }
+
+  .il-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgb(var(--ink) / 0.07);
+    border-radius: 8px;
+  }
+
+  .il-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(var(--surface-raised) / 0.55), transparent);
+    animation: il-shimmer 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+
+  .il-scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line-strong)) transparent;
+  }
+
+  /* Long-form text on editorial pages. */
+  .il-prose p {
+    @apply text-ink-2;
+    line-height: 1.7;
+  }
+
+  .il-prose p + p {
+    margin-top: 1rem;
+  }
+
+  .il-prose strong {
+    @apply font-semibold text-ink;
+  }
+}
+
+/* Keyframes live outside @layer: Tailwind only emits keyframes for animate-*
+   utilities it sees in markup, and these are used from hand-written classes. */
+@keyframes il-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes il-pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes il-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.il-pulse-dot {
+  animation: il-pulse-dot 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.il-dash-flow {
+  stroke-dasharray: 4 8;
+  animation: il-dash 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .il-skeleton::after {
+    display: none;
+  }
+}

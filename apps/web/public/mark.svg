@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="t">
+  <title id="t">INTERLOCK</title>
+  <!-- A normally-closed ladder contact, ─┤/├─: the rung passes until the
+       inhibit term (the coral trip slash) opens it. -->
+  <g fill="none" stroke="#151617" stroke-linecap="round" stroke-width="4.5">
+    <path d="M5 32H20" />
+    <path d="M44 32H59" />
+    <path d="M20 17V47" />
+    <path d="M44 17V47" />
+  </g>
+  <path d="M25.5 44.5L38.5 19.5" fill="none" stroke="#EE6048" stroke-linecap="round" stroke-width="5" />
+</svg>

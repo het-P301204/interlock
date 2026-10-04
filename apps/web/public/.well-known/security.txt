@@ -1,0 +1,5 @@
+Contact: https://github.com/het-P301204/interlock/security/advisories/new
+Expires: 2027-10-04T00:00:00.000Z
+Preferred-Languages: en
+Policy: https://het-p301204.github.io/interlock/security
+Canonical: https://het-p301204.github.io/interlock/.well-known/security.txt
