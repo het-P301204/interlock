@@ -24,9 +24,15 @@ RUN npm run build -w @interlock/web
 
 # ---- runtime: production dependencies only, non-root ------------------------
 FROM ${NODE_IMAGE} AS runtime
+# HOST=0.0.0.0 lets the published port reach the server, but on its own it would
+# turn the Host check off (it defaults to loopback names only for a loopback
+# bind). Keep it on, so a web page using DNS rebinding cannot reach a port
+# published on the reviewer's machine. Set INTERLOCK_ALLOWED_HOSTS to the
+# public name when deploying behind a reverse proxy.
 ENV NODE_ENV=production \
     PORT=8787 \
     HOST=0.0.0.0 \
+    INTERLOCK_ALLOWED_HOSTS=127.0.0.1,localhost,[::1] \
     INTERLOCK_DATA_DIR=/data \
     INTERLOCK_WEB_DIST=/app/apps/web/dist
 WORKDIR /app

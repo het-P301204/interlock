@@ -121,7 +121,7 @@ Without `manifest`, the current version's project manifest is used (`400 MANIFES
 
 `GET /api/analyses/:id` returns the record with the full `AnalysisResult` under `result` (schema `interlock.analysis/v1`, defined in `packages/core/src/model/analysis.ts`).
 
-Engine failures map to: `422 <code>` when an input cannot be trusted (with `details.side` = `baseline`, `current` or `manifest`), `504 ANALYSIS_TIMEOUT`, `503 ANALYSIS_MEMORY_LIMIT`, `503 ANALYSIS_BUSY` (more than `INTERLOCK_MAX_CONCURRENT_ANALYSES` engine jobs running; jobs are refused, not queued), `503 SHUTTING_DOWN`, `500 ENGINE_FAILED`.
+Engine failures map to: `422 <code>` when an input cannot be trusted (with `details.side` = `baseline`, `current` or `manifest`), `504 ANALYSIS_TIMEOUT`, `503 ANALYSIS_MEMORY_LIMIT`, `503 ANALYSIS_BUSY` (more than `INTERLOCK_MAX_CONCURRENT_ANALYSES` engine jobs running; jobs are refused, not queued; an upload is refused before its body is read when that many uploads are already in progress, with `Retry-After`), `503 SHUTTING_DOWN`, `500 ENGINE_FAILED`.
 
 ### Findings and changes
 

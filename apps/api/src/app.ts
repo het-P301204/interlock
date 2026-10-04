@@ -7,7 +7,6 @@
 import { readFileSync } from 'node:fs'
 import { Hono } from 'hono'
 import type { Context } from 'hono'
-import { bodyLimit } from 'hono/body-limit'
 import { z } from 'zod'
 import { ADAPTER_INFO, ENGINE_VERSION, RULE_INFO, cleanText, toCsv, toJson, toMarkdown, toPdf, validateManifest } from '@interlock/core'
 import type { AnalysisResult, DriftReport, Finding, ProjectVersionSummary, SafetyFunction, SafetyManifest } from '@interlock/core'
@@ -16,7 +15,7 @@ import type { Config } from './config.ts'
 import { EngineFailure, EngineRunner } from './engine.ts'
 import type { EngineJob, EngineReply } from './engine.ts'
 import { openApiDocument } from './openapi.ts'
-import { bearerAuth, cors, HttpError, hostCheck, logger, rateLimit, requestContext, secureHeaders } from './security.ts'
+import { bearerAuth, cors, HttpError, hostCheck, logger, rateLimit, requestContext, secureHeaders, streamingBodyLimit } from './security.ts'
 import type { Env, Log } from './security.ts'
 import { serveStatic } from './static.ts'
 import type { Page, Store } from './store.ts'
@@ -111,17 +110,17 @@ export function createApp(deps: AppDeps): InterlockApp {
   app.use('/api/*', cors(config))
   app.use('/api/*', rateLimit('api', config.rateLimitPerMinute * 20, 60_000, config.trustProxyHops))
 
-  // Body limits are enforced while the body streams in, so neither a large
-  // Content-Length nor a chunked body without one gets read past the limit.
-  const tooLarge = (max: number) => () => {
-    throw new HttpError(413, 'PAYLOAD_TOO_LARGE', `The request body exceeds the ${formatBytes(max)} limit.`, { limitBytes: max })
-  }
+  // The token is checked first: an unauthenticated request is answered before
+  // any of its body is read. Body limits are then enforced as the handler reads
+  // the body, so neither a large Content-Length nor a chunked body without one
+  // gets read past the limit, and a body the handler never reads is never buffered.
+  app.use('/api/*', bearerAuth(config))
+  const tooLarge = (max: number) => new HttpError(413, 'PAYLOAD_TOO_LARGE', `The request body exceeds the ${formatBytes(max)} limit.`, { limitBytes: max })
   const uploadMax = config.maxUploadBytes + 64 * 1024
-  const uploadLimit = bodyLimit({ maxSize: uploadMax, onError: tooLarge(config.maxUploadBytes) })
-  const jsonLimit = bodyLimit({ maxSize: config.maxJsonBytes, onError: tooLarge(config.maxJsonBytes) })
+  const uploadLimit = streamingBodyLimit(uploadMax, () => tooLarge(config.maxUploadBytes))
+  const jsonLimit = streamingBodyLimit(config.maxJsonBytes, () => tooLarge(config.maxJsonBytes))
   const isUpload = (path: string) => /^\/api\/projects\/[^/]+\/versions\/?$/.test(path)
   app.use('/api/*', (c, next) => (c.req.method === 'POST' && isUpload(c.req.path) ? uploadLimit(c, next) : jsonLimit(c, next)))
-  app.use('/api/*', bearerAuth(config))
 
   const engineLimiter = rateLimit('engine', config.rateLimitPerMinute, 60_000, config.trustProxyHops)
 
@@ -286,12 +285,32 @@ export function createApp(deps: AppDeps): InterlockApp {
 
   app.get('/api/projects/:id', (c) => c.json(project(c.req.param('id'))))
 
+  // Uploads whose body is being buffered or inspected right now. Every upload
+  // runs an engine job, so more of them than engine slots can never all
+  // succeed; refusing the excess before reading the body keeps N concurrent
+  // max-size uploads from buffering N bodies in the server's memory only to be
+  // answered ANALYSIS_BUSY afterwards.
+  let uploadsInFlight = 0
+
   app.post('/api/projects/:id/versions', engineLimiter, async (c) => {
     const p = project(c.req.param('id'))
     const type = (c.req.header('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
-    let name = c.req.query('name')
+    const name = c.req.query('name')
     // Reject a bad name or extension before reading a possibly large body.
     if (name !== undefined) validateFileName(name)
+    if (uploadsInFlight >= config.maxConcurrentAnalyses) {
+      c.header('Retry-After', '5')
+      throw new HttpError(503, 'ANALYSIS_BUSY', `${uploadsInFlight} uploads are already being processed. Try again shortly.`)
+    }
+    uploadsInFlight++
+    try {
+      return await receiveVersion(c, p.id, type, name)
+    } finally {
+      uploadsInFlight--
+    }
+  })
+
+  const receiveVersion = async (c: Context<Env>, projectId: string, type: string, name: string | undefined) => {
     let bytes: Uint8Array
     if (type === 'multipart/form-data') {
       let form: Record<string, unknown>
@@ -311,13 +330,13 @@ export function createApp(deps: AppDeps): InterlockApp {
       throw new HttpError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Send the file as application/octet-stream with ?name=<filename>, or as multipart/form-data field "file".')
     }
     const fileName = validateFileName(name)
-    if (bytes.length > config.maxUploadBytes) tooLarge(config.maxUploadBytes)()
+    if (bytes.length > config.maxUploadBytes) throw tooLarge(config.maxUploadBytes)
     if (bytes.length === 0) throw new HttpError(400, 'EMPTY_FILE', 'The uploaded file is empty.')
     const reply = await runEngine({ kind: 'inspect', file: { name: fileName, bytes }, role: 'current' })
     const summary = JSON.parse(reply.json) as ProjectVersionSummary
-    const v = store.addVersion({ projectId: p.id, fileName, sha256: summary.file.sha256, bytes, summary })
+    const v = store.addVersion({ projectId, fileName, sha256: summary.file.sha256, bytes, summary })
     return c.json(v, 201)
-  })
+  }
 
   app.get('/api/projects/:id/versions', (c) => {
     const p = project(c.req.param('id'))
@@ -482,7 +501,8 @@ export function createApp(deps: AppDeps): InterlockApp {
   function validateFileName(raw: string | undefined): string {
     if (!raw) throw new HttpError(400, 'FILE_NAME_REQUIRED', 'Pass the file name as ?name=<filename>.')
     // Metadata only: the name is never used as a path. Keep the last segment, strip invisible characters.
-    const last = cleanText(raw).split(/[\\/]/).pop()!.trim()
+    // Control characters (CR/LF, ESC, C1) are removed too: the name is echoed in JSON, reports and logs.
+    const last = cleanText(raw).replace(/\p{Cc}/gu, '').split(/[\\/]/).pop()!.trim()
     if (!last || last.length > 200 || last === '.' || last === '..') throw new HttpError(400, 'INVALID_FILE_NAME', 'The file name is empty or longer than 200 characters.')
     const ext = (/\.[^.]+$/.exec(last)?.[0] ?? '').toLowerCase()
     if (!UPLOAD_EXTENSIONS.includes(ext)) {

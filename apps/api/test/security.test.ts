@@ -35,6 +35,22 @@ describe('bearer token', () => {
     expect((await t.json('POST', '/api/projects', { name: 'x' }, { authorization: `Bearer ${TOKEN}` })).status).toBe(201)
   })
 
+  it('answers 401 before reading an unauthenticated chunked body', async () => {
+    const id = await t.createProject('x', { authorization: `Bearer ${TOKEN}` })
+    // An endless body without Content-Length: hono/body-limit used to drain up to the
+    // upload limit (64 MB by default) into memory before the token was checked.
+    let pulled = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(ctrl) {
+        pulled++
+        ctrl.enqueue(new Uint8Array(16384).fill(0x20))
+      },
+    })
+    const r = await t.app.request(`/api/projects/${id}/versions?name=a.L5X`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body, duplex: 'half' } as RequestInit)
+    expect(r.status).toBe(401)
+    expect(pulled).toBeLessThanOrEqual(4)
+  })
+
   it('compares tokens of any length safely', () => {
     expect(tokenMatches(TOKEN, TOKEN)).toBe(true)
     expect(tokenMatches('', TOKEN)).toBe(false)

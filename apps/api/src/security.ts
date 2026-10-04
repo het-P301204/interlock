@@ -132,6 +132,43 @@ export function cors(config: Config): MiddlewareHandler<Env> {
   }
 }
 
+/**
+ * Request body limit that counts bytes as the handler reads them. Unlike
+ * hono/body-limit, which drains a body without Content-Length (chunked) into
+ * memory before calling the next handler, nothing is read here: a request the
+ * handler rejects (no token, busy, bad name) never has its body buffered, and
+ * one that is read stops at the first chunk past the limit. The stream errors
+ * with the error `tooLarge()` returns, which the handler's read rethrows.
+ */
+export function streamingBodyLimit(maxSize: number, tooLarge: () => Error): MiddlewareHandler<Env> {
+  return async (c, next) => {
+    const raw = c.req.raw
+    if (!raw.body) return next()
+    const declared = raw.headers.get('content-length')
+    if (declared !== null && !raw.headers.has('transfer-encoding') && Number.parseInt(declared, 10) > maxSize) throw tooLarge()
+    const reader = raw.body.getReader()
+    let size = 0
+    const limited = new ReadableStream<Uint8Array>({
+      async pull(ctrl) {
+        const { done, value } = await reader.read()
+        if (done) return ctrl.close()
+        size += value.byteLength
+        if (size > maxSize) {
+          void reader.cancel().catch(() => {})
+          ctrl.error(tooLarge())
+          return
+        }
+        ctrl.enqueue(value)
+      },
+      cancel(reason) {
+        return reader.cancel(reason)
+      },
+    })
+    c.req.raw = new Request(raw, { body: limited, duplex: 'half' } as RequestInit)
+    await next()
+  }
+}
+
 function digest(s: string): Buffer {
   return createHash('sha256').update(s, 'utf8').digest()
 }

@@ -93,7 +93,17 @@ export interface LogicTextProps {
   wrap?: boolean
 }
 
+/** Rung text beyond this is shown truncated: a hostile export can carry megabytes in one rung. */
+const MAX_RENDERED_CHARS = 20_000
+
 export function LogicText({ text, language = 'rung', marks, units: unitsProp, className, wrap = true }: LogicTextProps) {
+  if (!unitsProp && text.length > MAX_RENDERED_CHARS)
+    return (
+      <code className={cx('block font-mono text-data leading-[1.7] whitespace-pre-wrap [overflow-wrap:anywhere]', className)}>
+        {text.slice(0, MAX_RENDERED_CHARS)}
+        <span className="text-ink-3"> … truncated for display ({text.length.toLocaleString('en-US')} characters in total; the exported reports contain the full text)</span>
+      </code>
+    )
   const units = unitsProp ?? tokenize(text, language)
   return (
     <code className={cx('block font-mono text-data leading-[1.7]', wrap ? 'whitespace-pre-wrap [overflow-wrap:anywhere]' : 'whitespace-pre', className)}>

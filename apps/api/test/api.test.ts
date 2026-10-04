@@ -356,3 +356,60 @@ describe('worker timeout', () => {
     await t.close()
   })
 })
+
+describe('upload admission', () => {
+  it('refuses uploads beyond the engine slots before reading their bodies', async () => {
+    const t = makeApp({ maxConcurrentAnalyses: 1 })
+    const id = await t.createProject()
+    const bytes = fixture('l5x/baseline-safe.L5X')
+    // The first upload stalls half-way through its body until `release` is called.
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    let firstSent = 0
+    const first = new ReadableStream<Uint8Array>({
+      async pull(ctrl) {
+        if (firstSent >= bytes.length) return ctrl.close()
+        if (firstSent >= bytes.length / 2) await gate
+        ctrl.enqueue(bytes.subarray(firstSent, firstSent + 4096))
+        firstSent += 4096
+      },
+    })
+    const send = (body: ReadableStream<Uint8Array>) =>
+      t.app.request(`/api/projects/${id}/versions?name=a.L5X`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body, duplex: 'half' } as RequestInit)
+    const pending = send(first)
+    while (firstSent < bytes.length / 2) await new Promise((r) => setTimeout(r, 5))
+
+    let secondPulled = 0
+    const second = new ReadableStream<Uint8Array>({
+      pull(ctrl) {
+        secondPulled++
+        ctrl.enqueue(new Uint8Array(4096).fill(0x20))
+      },
+    })
+    const busy = await send(second)
+    expect(busy.status).toBe(503)
+    expect(((await busy.json()) as Json)['error']['code']).toBe('ANALYSIS_BUSY')
+    expect(busy.headers.get('retry-after')).toBe('5')
+    // Answered without draining the endless body (streams prime a chunk or two).
+    expect(secondPulled).toBeLessThanOrEqual(4)
+
+    release()
+    expect((await pending).status).toBe(201)
+    // The slot is free again.
+    expect((await t.upload(id, 'l5x/current-normal.L5X')).status).toBe(201)
+    await t.close()
+  })
+
+  it('strips control characters from the stored file name', async () => {
+    const t = makeApp()
+    const id = await t.createProject()
+    const r = await t.app.request(`/api/projects/${id}/versions?name=${encodeURIComponent('a\r\nX-Injected: 1\u001b[31m\u009b.L5X')}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/octet-stream' },
+      body: fixture('l5x/baseline-safe.L5X'),
+    })
+    expect(r.status).toBe(201)
+    expect(((await r.json()) as Json)['fileName']).toBe('aX-Injected: 1[31m.L5X')
+    await t.close()
+  })
+})

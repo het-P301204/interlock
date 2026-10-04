@@ -48,7 +48,7 @@ docker compose up --build          # http://127.0.0.1:8787
 
 - The build stage installs all dependencies and builds the web app.
 - The runtime stage installs production dependencies only, then removes npm, npx, corepack and yarn (the server never runs a package manager), applies OS package updates, copies the engine, API and CLI sources, the scenario registry and the synthetic fixtures, and the built web app.
-- It runs as the unprivileged `node` user, keeps its database on the `/data` volume, listens on `0.0.0.0:8787` inside the container, and has a health check against `/api/health`.
+- It runs as the unprivileged `node` user, keeps its database on the `/data` volume, listens on `0.0.0.0:8787` inside the container, accepts only the loopback `Host` names `127.0.0.1,localhost,[::1]` unless `INTERLOCK_ALLOWED_HOSTS` is set (so a web page using DNS rebinding cannot reach a locally published port), and has a health check against `/api/health`.
 
 `docker-compose.yml` publishes the port on loopback only (`127.0.0.1:8787`), runs the container read-only with a 64 MB `/tmp` tmpfs, drops all capabilities, sets `no-new-privileges`, and limits memory to 2 GB and processes to 256. It passes the `INTERLOCK_*` variables through from `.env` with the defaults listed below, and restricts accepted host names to `127.0.0.1,localhost`.
 
@@ -74,7 +74,7 @@ The server reads configuration only from the environment. `.env.example` documen
 | `HOST` | `127.0.0.1` | | bind address; the container image sets `0.0.0.0` |
 | `NODE_ENV` | | | `production` behaves like `--production` |
 | `INTERLOCK_API_TOKEN` | unset | at least 16 characters | bearer token for every `/api` route except `/api/health`; no default token exists |
-| `INTERLOCK_ALLOWED_HOSTS` | `127.0.0.1,localhost,[::1]` when `HOST` is loopback, otherwise any | comma list, or `*` | accepted `Host` header names (DNS-rebinding protection) |
+| `INTERLOCK_ALLOWED_HOSTS` | `127.0.0.1,localhost,[::1]` when `HOST` is loopback and in the container image, otherwise any | comma list, or `*` | accepted `Host` header names (DNS-rebinding protection) |
 | `INTERLOCK_ALLOWED_ORIGINS` | none | comma list | origins allowed to call the API cross-origin |
 | `INTERLOCK_TRUST_PROXY_HOPS` | `0` | 0 to 10 | trusted proxies appending to `X-Forwarded-For` (used for rate limiting) |
 | `INTERLOCK_DATA_DIR` | `.data` | | database directory (`interlock.db`); relative paths resolve from the repository root; the image uses `/data` |
