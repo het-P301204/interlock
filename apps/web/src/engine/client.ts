@@ -8,9 +8,9 @@
  * Errors from the engine reject with EngineError carrying the serialized
  * details (which input failed, parser location and diagnostics).
  */
-import type { Side } from '@interlock/core/types'
+import type { AnalysisResult, Side } from '@interlock/core/types'
 import type { AnalyzeInput, DriftInput, FileInput } from './types.ts'
-import type { EngineProgress, EngineRequest, EngineResponse, InspectProgress, OpResults, SerializedError, StageProgress } from './protocol.ts'
+import type { EngineProgress, EngineRequest, EngineResponse, InspectProgress, OpResults, ReportFormat, SerializedError, StageProgress } from './protocol.ts'
 
 export class EngineError extends Error {
   readonly details: SerializedError
@@ -119,6 +119,10 @@ class EngineClient {
 
   analyze(input: AnalyzeInput, onStage?: (p: StageProgress) => void) {
     return this.call<'analyze'>({ op: 'analyze', input }, (p) => p.type === 'stage' && onStage?.(p), [input.baseline.bytes.buffer, input.current.bytes.buffer])
+  }
+
+  report(format: ReportFormat, result: AnalysisResult) {
+    return this.call<'report'>({ op: 'report', format, result })
   }
 
   drift(input: DriftInput) {

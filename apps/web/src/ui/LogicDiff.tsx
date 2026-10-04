@@ -14,7 +14,7 @@
  */
 import type { ReactNode } from 'react'
 import { cx } from '../lib/cx.ts'
-import { diffUnits } from './logicTokens.ts'
+import { diffUnits, emphasizeAtoms } from './logicTokens.ts'
 import { LogicText, tokenize } from './LogicText.tsx'
 import type { LogicLanguage } from './LogicText.tsx'
 
@@ -26,6 +26,11 @@ export interface LogicDiffProps {
   afterLabel?: ReactNode
   beforeMeta?: ReactNode
   afterMeta?: ReactNode
+  /**
+   * Condition text only: atom labels to mark instead of an LCS diff, e.g.
+   * atoms absent from the current project (before) and new ones (after).
+   */
+  emphasis?: { before?: readonly string[]; after?: readonly string[] }
   /** Force stacked layout even on wide screens. */
   stacked?: boolean
   className?: string
@@ -55,11 +60,17 @@ export function LogicDiff({
   beforeMeta,
   afterMeta,
   stacked = false,
+  emphasis,
   className,
 }: LogicDiffProps) {
   const ua = before !== undefined ? tokenize(before, language) : []
   const ub = after !== undefined ? tokenize(after, language) : []
-  const marks = before !== undefined && after !== undefined ? diffUnits(ua, ub) : undefined
+  let marks = before !== undefined && after !== undefined ? diffUnits(ua, ub) : undefined
+  if (emphasis && language === 'condition') {
+    const a = emphasizeAtoms(ua, emphasis.before ?? [], 'removed')
+    const b = emphasizeAtoms(ub, emphasis.after ?? [], 'added')
+    if (a || b) marks = { a: a ?? ua.map(() => 'same'), b: b ?? ub.map(() => 'same') }
+  }
 
   const absent = (side: string) => <p className="font-mono text-data italic text-ink-2">Not present in {side}</p>
 

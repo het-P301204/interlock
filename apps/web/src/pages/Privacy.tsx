@@ -33,6 +33,7 @@ export function PrivacyPage() {
               <DocList
                 items={[
                   ['Project files', 'Not stored. They are held in memory for the current session and discarded when you close or reload the page.'],
+                  ['Project versions', 'Name, size, SHA-256, controller and object counts of each file you inspect, so you can find it again. Never the file contents.'],
                   ['Analysis results', 'Saved in this browser’s IndexedDB so you can reopen them. They include rung text and tag names from your files.'],
                   ['Preferences', 'Theme and sidebar state, in localStorage.'],
                 ]}

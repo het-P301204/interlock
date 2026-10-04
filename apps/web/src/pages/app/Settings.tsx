@@ -60,7 +60,7 @@ export function Settings() {
           )}
           <div className="border-t border-line pt-4">
             <Button variant="danger" iconLeft={<Trash2 />} onClick={() => setConfirm(true)}>
-              Delete saved analyses
+              Delete saved analyses and project records
             </Button>
           </div>
         </Panel>
@@ -96,8 +96,8 @@ export function Settings() {
       <Modal
         open={confirm}
         onClose={() => setConfirm(false)}
-        title="Delete saved analyses?"
-        description={`This removes ${history.length} saved analysis result${history.length === 1 ? '' : 's'} from this browser. It cannot be undone.`}
+        title="Delete saved analyses and project records?"
+        description={`This removes ${history.length} saved analysis result${history.length === 1 ? '' : 's'} and the list of inspected project versions from this browser. It cannot be undone.`}
         size="sm"
         footer={
           <>

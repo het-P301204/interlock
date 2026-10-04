@@ -20,9 +20,26 @@ function devOnlyStripCsp(): Plugin {
   }
 }
 
+/**
+ * GitHub Pages serves 404.html for unknown paths. Emitting a copy of
+ * index.html under that name lets deep links (/interlock/app/findings/IL-0001)
+ * boot the SPA, whose router then resolves the path.
+ */
+function spaFallback404(): Plugin {
+  return {
+    name: 'interlock:spa-404',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      const index = bundle['index.html']
+      if (index && index.type === 'asset') this.emitFile({ type: 'asset', fileName: '404.html', source: index.source })
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => ({
   base: mode === 'pages' ? '/interlock/' : '/',
-  plugins: [react(), devOnlyStripCsp()],
+  plugins: [react(), devOnlyStripCsp(), ...(mode === 'pages' ? [spaFallback404()] : [])],
   server: {
     fs: { allow: [repoRoot] },
     proxy: { '/api': { target: 'http://127.0.0.1:8787', changeOrigin: false } },

@@ -12,6 +12,16 @@ export type EngineRequest =
   | { id: number; op: 'validateManifest'; json: unknown }
   | { id: number; op: 'analyze'; input: AnalyzeInput }
   | { id: number; op: 'drift'; input: DriftInput }
+  | { id: number; op: 'report'; format: ReportFormat; result: AnalysisResult }
+
+export type ReportFormat = 'pdf' | 'json' | 'csv' | 'md'
+
+/** A generated report: text for JSON/CSV/Markdown, bytes for PDF. */
+export interface ReportOutput {
+  format: ReportFormat
+  mime: string
+  data: string | Uint8Array
+}
 
 export interface EngineInfo {
   engineVersion: string
@@ -24,6 +34,7 @@ export interface OpResults {
   validateManifest: ManifestValidation
   analyze: AnalysisResult
   drift: DriftReport
+  report: ReportOutput
 }
 
 /** Real milestones of an inspect call: the worker hashes the bytes itself, then hands them to the engine. */

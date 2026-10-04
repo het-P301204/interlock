@@ -35,7 +35,7 @@ const solid: Record<Tone, string> = {
   outline: 'bg-transparent text-ink ring-ink',
 }
 
-const glyphFill: Record<Tone, string> = {
+export const glyphFill: Record<Tone, string> = {
   neutral: 'fill-ink-2',
   coral: 'fill-coral',
   marigold: 'fill-marigold',
@@ -191,7 +191,7 @@ const STATUS: Record<string, { tone: Tone; shape: GlyphShape; label?: string; da
   BROKEN: { tone: 'coral', shape: 'cross' },
   // disposition / misc
   UNDECLARED: { tone: 'outline', shape: 'ring', dashed: true },
-  REVIEW: { tone: 'coral', shape: 'triangle' },
+  REVIEW: { tone: 'outline', shape: 'triangle' },
   POSITIVE: { tone: 'sage', shape: 'check' },
   INFORMATIONAL: { tone: 'iris', shape: 'square' },
   DRIFT: { tone: 'marigold', shape: 'triangle' },

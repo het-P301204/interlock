@@ -133,3 +133,35 @@ function bridgeSpaces(units: Unit[], marks: DiffMark[]): void {
     if (before !== 'same' && before === marks[k + 1]) marks[k] = before!
   }
 }
+
+/**
+ * Marks the given atom labels in condition text, together with a directly
+ * preceding NOT and the connective before it ("AND NOT X"). Used for firing
+ * conditions, where an LCS diff is noisy because the engine may reorder
+ * terms. Returns null when no label occurs in the text.
+ */
+export function emphasizeAtoms(units: Unit[], labels: readonly string[], mark: Exclude<DiffMark, 'same'>): DiffMark[] | null {
+  const set = new Set(labels)
+  const marks: DiffMark[] = units.map(() => 'same')
+  let found = false
+  units.forEach((u, i) => {
+    if (u.kind !== 'word' || !set.has(u.text)) return
+    found = true
+    marks[i] = mark
+    let k = i - 1
+    const prevNonSpace = () => {
+      while (k >= 0 && units[k]!.kind === 'space') k--
+      return k >= 0 ? units[k] : undefined
+    }
+    let p = prevNonSpace()
+    if (p?.kind === 'keyword' && p.text === 'NOT') {
+      for (let j = k; j < i; j++) marks[j] = mark
+      k--
+      p = prevNonSpace()
+    }
+    if (p?.kind === 'keyword' && (p.text === 'AND' || p.text === 'OR')) {
+      for (let j = k; j < i; j++) if (marks[j] === 'same') marks[j] = mark
+    }
+  })
+  return found ? marks : null
+}

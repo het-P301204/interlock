@@ -24,6 +24,7 @@ import {
   BookOpen,
   Workflow,
 } from 'lucide-react'
+import { SEVERITY_ORDER } from '@interlock/core/types'
 import { useWorkspace } from '../state/analysis.ts'
 import { useUi } from '../state/ui.ts'
 import type { Command } from '../ui/CommandMenu.tsx'
@@ -57,6 +58,19 @@ export function useCommands(): Command[] {
     )
 
     if (result) {
+      for (const sev of SEVERITY_ORDER) {
+        const n = result.findings.filter((f) => f.severity === sev).length
+        if (!n) continue
+        cmds.push({
+          id: `sev-${sev}`,
+          group: 'Severity',
+          label: `${sev} findings`,
+          icon: <ListChecks />,
+          hint: String(n),
+          keywords: ['severity', sev.toLowerCase()],
+          run: go(`/app/findings?severity=${sev}`),
+        })
+      }
       for (const f of result.findings) {
         cmds.push({
           id: `f-${f.id}`,

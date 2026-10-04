@@ -72,6 +72,32 @@ export interface HistoryEntry {
   safetyRelevant: number
 }
 
+/**
+ * A project version inspected in this browser. Metadata only: the file's
+ * bytes are never persisted. The File object is kept in memory for this
+ * session (see projectFiles) so it can be reused without choosing it again.
+ */
+export interface ProjectRecord {
+  sha256: string
+  name: string
+  sizeBytes: number
+  lastRole: Side
+  inspectedAt: string
+  controllerName: string
+  processorType?: string
+  firmwareRevision?: string
+  exportDate?: string
+  formatLabel: string
+  parser: string
+  readiness: 'READY' | 'READY_WITH_WARNINGS' | 'BLOCKED'
+  counts: { programs: number; routines: number; rungs: number; modules: number; instances: number; tags: number; tasks: number }
+  diagnostics: number
+}
+
+/** Files chosen in this session, by SHA-256. Never persisted. */
+export const projectFiles = new Map<string, File>()
+
+const PROJECTS_KEY = 'interlock.projects'
 const HISTORY_KEY = 'interlock.history'
 const CURRENT_KEY = 'interlock.analysis.current'
 const resultKey = (id: string) => `interlock.analysis.${id}`
@@ -84,6 +110,7 @@ interface WorkspaceState {
   run: RunState
   result: AnalysisResult | null
   history: HistoryEntry[]
+  projects: ProjectRecord[]
   hydrated: boolean
 
   loadSide: (side: Side, file: File) => Promise<void>
@@ -130,6 +157,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   run: emptyRun(),
   result: null,
   history: [],
+  projects: [],
   hydrated: false,
 
   async loadSide(side, file) {
@@ -148,6 +176,29 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
         else if (p.phase === 'parsing') patch({ phase: 'parsing' })
       })
       patch({ phase: value.ok ? 'ready' : 'failed', result: value, elapsedMs, sha256: value.file.sha256 })
+      if (value.ok) {
+        const sm = value.summary
+        projectFiles.set(value.file.sha256, file)
+        const rec: ProjectRecord = {
+          sha256: value.file.sha256,
+          name: value.file.name,
+          sizeBytes: value.file.sizeBytes,
+          lastRole: side,
+          inspectedAt: new Date().toISOString(),
+          controllerName: sm.metadata.controllerName,
+          processorType: sm.metadata.processorType,
+          firmwareRevision: sm.metadata.firmwareRevision,
+          exportDate: sm.metadata.exportDate,
+          formatLabel: sm.metadata.formatLabel,
+          parser: `${sm.parser.adapter} ${sm.parser.version}`,
+          readiness: sm.readiness,
+          counts: sm.counts,
+          diagnostics: sm.diagnostics.length,
+        }
+        const projects = [rec, ...get().projects.filter((p) => p.sha256 !== rec.sha256)].slice(0, 100)
+        set({ projects })
+        void idbSet(PROJECTS_KEY, projects)
+      }
     } catch (err) {
       if (err instanceof EngineCancelled) return
       patch({ phase: 'failed', error: toSerialized(err) })
@@ -227,11 +278,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
 
   async hydrate() {
     if (get().hydrated) return
-    const [history, currentId] = await Promise.all([idbGet<HistoryEntry[]>(HISTORY_KEY), idbGet<string>(CURRENT_KEY)])
+    const [history, currentId, projects] = await Promise.all([idbGet<HistoryEntry[]>(HISTORY_KEY), idbGet<string>(CURRENT_KEY), idbGet<ProjectRecord[]>(PROJECTS_KEY)])
     const result = currentId ? await idbGet<AnalysisResult>(resultKey(currentId)) : undefined
     set({
       hydrated: true,
       history: Array.isArray(history) ? history : [],
+      // Projects inspected before hydration finished stay first.
+      projects: [...get().projects, ...(Array.isArray(projects) ? projects : []).filter((p) => !get().projects.some((q) => q.sha256 === p.sha256))],
       result: get().result ?? result ?? null,
     })
   },
@@ -239,7 +292,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => ({
   async clearLocalData() {
     const ok = await idbClear()
     for (const h of get().history) void idbDel(resultKey(h.id))
-    set({ history: [], result: null })
+    set({ history: [], projects: [], result: null })
     return ok
   },
 }))

@@ -18,6 +18,7 @@ import { EmptyState } from '../../ui/States.tsx'
 import { toast } from '../../ui/Toast.tsx'
 
 function ScenarioRow({ s, busy, onLoad }: { s: Scenario; busy: boolean; onLoad: () => void }) {
+  const navigate = useNavigate()
   const available = scenarioAvailable(s, hasFixture)
   return (
     <li className="grid grid-cols-1 gap-4 border-b border-line px-5 py-5 last:border-0 sm:px-7 md:grid-cols-[3rem_minmax(0,1fr)_auto] md:items-start">
@@ -47,7 +48,9 @@ function ScenarioRow({ s, busy, onLoad }: { s: Scenario; busy: boolean; onLoad: 
             Load Demo Scenario
           </Button>
         ) : (
-          <p className="max-w-[14rem] text-[0.8125rem] text-ink-2">Multi-site drift runs from the Drift page, which is not in this build yet.</p>
+          <Button variant="secondary" onClick={() => navigate(`/app/drift?scenario=${encodeURIComponent(s.id)}`)} iconRight={<ArrowRight />}>
+            Open Drift Analysis
+          </Button>
         )}
       </div>
     </li>

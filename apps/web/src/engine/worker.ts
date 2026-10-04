@@ -7,7 +7,7 @@
  *   inspect  hashing -> hashed (sha256 computed here) -> parsing -> result
  *   analyze  one `stage` message per StageEvent the engine emits
  */
-import { ADAPTER_INFO, ENGINE_VERSION, analyzeDrift, analyzeProjects, inspectProject, validateManifest } from '@interlock/core'
+import { ADAPTER_INFO, ENGINE_VERSION, analyzeDrift, analyzeProjects, inspectProject, toCsv, toJson, toMarkdown, toPdf, validateManifest } from '@interlock/core'
 import type { ParserDiagnostic } from '@interlock/core/types'
 import type { EngineProgress, EngineRequest, EngineResponse, SerializedError } from './protocol.ts'
 
@@ -93,6 +93,14 @@ async function handle(req: EngineRequest): Promise<unknown> {
       })
     case 'drift':
       return analyzeDrift(req.input)
+    case 'report': {
+      // Deterministic: the same AnalysisResult always yields the same bytes.
+      const r = req.result
+      if (req.format === 'pdf') return { format: 'pdf', mime: 'application/pdf', data: toPdf(r) }
+      if (req.format === 'json') return { format: 'json', mime: 'application/json', data: toJson(r) }
+      if (req.format === 'csv') return { format: 'csv', mime: 'text/csv', data: toCsv(r) }
+      return { format: 'md', mime: 'text/markdown', data: toMarkdown(r) }
+    }
   }
 }
 
