@@ -183,10 +183,14 @@ function makeProtectiveEffect(ctx: RuleContext, a: SfAnalysis, cls: WeakeningCla
           const rungText = routine.rungs.find((x) => x.number === w.rung)?.text
           if (rungText) explanation.push(`The new rung in ${where}: ${rungText}`)
         }
+        const impl = new Set([
+          ...(sf.implementation.program && sf.implementation.routine ? [`program:${sf.implementation.program}/${sf.implementation.routine}`.toLowerCase()] : []),
+        ])
+        const outside = !impl.has(w.routineId.toLowerCase()) && !(sf.implementation.module && w.routineId.toLowerCase().startsWith(`module:${sf.implementation.module.toLowerCase()}/`))
         title = `Protective output ${p.outC.label} bypassed by a new writer`
-        summary = `${w.instruction} in ${where} now writes the protective output of ${sf.name}, outside its declared implementation.`
+        summary = `${w.instruction} in ${where} now writes the protective output of ${sf.name}${outside ? ', outside its declared implementation' : ', overriding the protective logic'}.`
         explanation.push(
-          `${p.newWriters.length === 1 ? 'A new instruction writes' : `${p.newWriters.length} new instructions write`} ${p.outC.label} outside the declared implementation: ${p.newWriters.map((x) => `${x.instruction} (${x.routineId.replace(/^program:/, '')} rung ${x.rung})`).join('; ')}.`,
+          `${p.newWriters.length === 1 ? 'A new instruction writes' : `${p.newWriters.length} new instructions write`} ${p.outC.label}: ${p.newWriters.map((x) => `${x.instruction} (${x.routineId.replace(/^program:/, '')} rung ${x.rung})`).join('; ')}.`,
           `INTERLOCK executes the scan in order, so the last write wins: the output can now hold a value the protective logic did not choose.`,
         )
         for (const x of p.newWriters) evidence.push({ kind: 'writer', side: 'current', writer: x, note: 'New writer of the protective output' })

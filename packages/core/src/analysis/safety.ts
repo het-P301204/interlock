@@ -84,20 +84,6 @@ function writerKey(w: WriteEvent): string {
   return `${w.routineId}|${w.kind}|${w.instruction.replace(/\s+/g, '').toLowerCase()}`
 }
 
-function implementationRoutines(sf: SafetyFunction, idx: ProjectIndex): Set<string> {
-  const out = new Set<string>()
-  const impl = sf.implementation
-  if (impl.program && impl.routine) {
-    const r = idx.routine(impl.program, impl.routine)
-    if (r) out.add(r.id)
-  }
-  if (impl.module) {
-    const m = idx.modules.get(lc(impl.module))
-    if (m) for (const id of m.routineIds) out.add(id)
-  }
-  return out
-}
-
 /** Add tag anchors for alias names so a change to the alias tag itself lands in the cone. */
 function expandCone(scan: SymbolicScan, anchors: Set<Anchor>): Set<Anchor> {
   const out = new Set(anchors)
@@ -191,9 +177,10 @@ export function analyzeSafetyFunction(pool: ExprPool, sf: SafetyFunction, b: Sid
       const raw = compareConditions(pool, tripB, tripC)
       const writersB = b.scan.executedWrites(r.b.loc)
       const writersC = c.scan.executedWrites(r.c.loc)
-      const impl = implementationRoutines(sf, c.index)
       const baseKeys = new Set(writersB.map(writerKey))
-      const newWriters = writersC.filter((w) => !baseKeys.has(writerKey(w)) && (impl.size === 0 ? writersB.length > 0 : !impl.has(w.routineId)))
+      // Any writer that did not exist in the baseline is new, inside or outside the declared
+      // implementation: a forced MOV/OTU in the protective routine is as much a bypass as one elsewhere.
+      const newWriters = writersC.filter((w) => !baseKeys.has(writerKey(w)) && writersB.length > 0)
       const curKeys = new Set(writersC.map(writerKey))
       const lostWriters = writersB
         .filter((w) => !curKeys.has(writerKey(w)))
