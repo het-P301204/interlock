@@ -1,0 +1,12 @@
+{
+  "name": "@interlock/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "INTERLOCK command line: analyze two L5X exports in CI and fail the build on safety-impacting changes.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "bin": { "interlock": "./src/main.ts" },
+  "dependencies": {
+    "@interlock/core": "*"
+  }
+}

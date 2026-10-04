@@ -1,0 +1,15 @@
+{
+  "name": "@interlock/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "INTERLOCK analysis engine: secure XML parsing, L5X adapter, normalization, reuse graph, symbolic scan, safety-function analysis, rules, ranking and report generation. Deterministic; no I/O, no clock, no network.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/model/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

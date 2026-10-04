@@ -1,0 +1,44 @@
+{
+  "name": "interlock",
+  "version": "0.1.0",
+  "private": true,
+  "description": "INTERLOCK turns PLC project changes into safety-impact evidence: reusable-module blast radius, firing-condition analysis, notification-path analysis and a prioritized review set, from exported project files only.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @interlock/web",
+    "dev:api": "npm run dev -w @interlock/api",
+    "build": "npm run build -w @interlock/web",
+    "build:pages": "npm run build:pages -w @interlock/web",
+    "start": "node apps/api/src/index.ts --production",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "fixtures": "node scripts/build-fixtures.ts",
+    "fixtures:check": "node scripts/build-fixtures.ts --check",
+    "interlock": "node apps/cli/src/main.ts",
+    "verify": "npm run lint && npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.5.1",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.6",
+    "fast-check": "^4.10.2",
+    "globals": "^17.12.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3"
+  }
+}
