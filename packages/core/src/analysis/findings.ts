@@ -8,9 +8,11 @@
  *   criticality  highest declared criticality of affected functions: CRITICAL 15 · HIGH 10 · MEDIUM 5 · LOW 0
  *   breadth      5 × min(4, log2(1 + affected safety functions + safety-relevant instances))
  *   notification BROKEN 8 · SUPPRESSED 4 · DEGRADED 2
- *   rule bonus   externally writable inhibit/bypass +6, shared module +2 per safety instance (max 10), name hint +4
+ *   rule bonus   bypass by a new writer +6, inhibit on an externally writable tag +6, external write access
+ *                granted +4, shared module +2 per safety-relevant instance (max 10), protective name hint +4
  *   confidence   HIGH 0 · MEDIUM −3 · LOW −8
- *   disposition  POSITIVE and INFORMATIONAL findings are capped below every REVIEW/UNDECLARED finding
+ *   order        REVIEW and UNDECLARED findings always precede INFORMATIONAL and POSITIVE ones; within a
+ *                group, by score, then severity, then finding type, then fingerprint
  */
 import type {
   Confidence, EvidenceItem, Finding, ProjectVersionSummary, Side, Severity,
@@ -186,8 +188,10 @@ export function buildFindings(effects: Effect[], ctx: RuleContext, meta: Finding
   }
 
   const typeOrder = (t: string) => ['PROTECTIVE_OUTPUT_BYPASSED', 'PROTECTIVE_PATH_REMOVED', 'NEW_INHIBIT', 'SHUTDOWN_WEAKENED', 'ALARM_SUPPRESSED'].indexOf(t)
+  const group = (d: { disposition: string }) => (d.disposition === 'REVIEW' || d.disposition === 'UNDECLARED' ? 0 : 1)
   drafts.sort(
     (a, b) =>
+      group(a) - group(b) ||
       b.score - a.score ||
       SEV_W[b.severity] - SEV_W[a.severity] ||
       (typeOrder(a.type) === -1 ? 99 : typeOrder(a.type)) - (typeOrder(b.type) === -1 ? 99 : typeOrder(b.type)) ||

@@ -383,7 +383,7 @@ export class SymbolicScan {
     for (const line of routine.stLines) {
       const code = line.text.replace(/\(\*[\s\S]*?\*\)/g, '').replace(/\/\/.*$/, '')
       const refs = [
-        ...[...code.matchAll(/([A-Za-z_\\][A-Za-z0-9_.:[\]\\]*)\s*:=/g)].map((m) => m[1]!),
+        ...stAssignmentTargets(code),
         // COP/CPS/MOV(src, dest, ...) write their second argument.
         ...[...code.matchAll(/\b(?:COP|CPS|MOV)\s*\(\s*[^,()]+,\s*([A-Za-z_\\][A-Za-z0-9_.:[\]\\]*)/gi)].map((m) => m[1]!),
       ]
@@ -1166,6 +1166,31 @@ export class SymbolicScan {
     const r = parseRung(text)
     return instructionsOf(r.elements).map((i) => i.mnemonic)
   }
+}
+
+/**
+ * Assignment targets in a line of structured text. Each identifier token is
+ * consumed exactly once and then checked for a following ":=", so the scan is
+ * linear in the line length (a backtracking regex was quadratic on long
+ * identifier-like lines).
+ */
+export function stAssignmentTargets(code: string): string[] {
+  const out: string[] = []
+  const ident = /[A-Za-z_\\][A-Za-z0-9_.:[\]\\]*/g
+  let m: RegExpExecArray | null
+  while ((m = ident.exec(code)) !== null) {
+    let tok = m[0]
+    let j = ident.lastIndex
+    // The token pattern also swallows a trailing ":" of ":=" (e.g. "X:=1").
+    if (tok.endsWith(':') && code[j] === '=') {
+      tok = tok.slice(0, -1)
+      out.push(tok)
+      continue
+    }
+    while (j < code.length && (code[j] === ' ' || code[j] === '\t')) j++
+    if (code[j] === ':' && code[j + 1] === '=') out.push(tok)
+  }
+  return out
 }
 
 const ACCESS_RANK: Record<string, number> = { None: 0, 'Read Only': 1, 'Read/Write': 2, Unknown: 2, 'n/a': 0 }

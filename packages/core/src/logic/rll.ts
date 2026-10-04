@@ -219,7 +219,8 @@ export const KNOWN_INSTRUCTIONS = new Set<string>([
 /** Numeric literal (Logix allows 16#, 8#, 2# radix prefixes and underscores). */
 export function parseNumericLiteral(s: string): number | null {
   const t = s.trim().replace(/_/g, '')
-  if (/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(t)) return Number(t)
+  if (t.length > 64) return null
+  if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(t)) return Number(t)
   const m = /^([+-]?)(16|8|2)#([0-9A-Fa-f]+)$/.exec(t)
   if (m) {
     const v = parseInt(m[3]!, Number(m[2]))

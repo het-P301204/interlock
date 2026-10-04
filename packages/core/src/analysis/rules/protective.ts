@@ -7,7 +7,7 @@
  * classifier picks the most specific one in a fixed precedence order so each
  * weakening yields exactly one finding:
  *
- *   1. PROTECTIVE_OUTPUT_BYPASSED  a new writer outside the declared implementation, or the function can never act
+ *   1. PROTECTIVE_OUTPUT_BYPASSED  a new writer of the output (anywhere, including inside the declared routine), or the function can never act
  *   2. PROTECTIVE_PATH_REMOVED     a baseline writer no longer executes
  *   3. NEW_INHIBIT                 fixing one new term restores the baseline exactly (proved)
  *   4. PROTECTIVE_PATH_REMOVED     a baseline trip cause no longer appears
@@ -331,7 +331,7 @@ export const ProtectiveOutputBypassRule = protectiveRule(
   'IL-R003',
   'PROTECTIVE_OUTPUT_BYPASSED',
   'Protective output bypassed',
-  'A declared protective output gained a writer outside the declared implementation that weakens the function, or the function can no longer act at all.',
+  'A declared protective output gained a new writer (inside or outside the declared implementation) that weakens the function, or the function can no longer act at all.',
   'CRITICAL',
 )
 export const RemovedProtectivePathRule = protectiveRule(

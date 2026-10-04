@@ -41,8 +41,26 @@ function undeclaredLocs(ctx: RuleContext, c: DiffChange): string[] {
   return locs.filter((l) => !l.startsWith('#') && !l.startsWith('m:') && ctx.sfIdsForLoc(l).length === 0)
 }
 
-function hintFor(ctx: RuleContext, changes: DiffChange[]): string | undefined {
+/** Display label for a location, including the pseudo-locations rung interpretation uses. */
+function locLabel(ctx: RuleContext, l: string): string {
+  const preset = /^(.*)\.#preset$/.exec(l)
+  if (preset) return `${locLabel(ctx, preset[1]!)}.PRE`
+  return ctx.current.scan.meta.get(l)?.label ?? ctx.baseline.scan.meta.get(l)?.label ?? l.replace(/^[cp]:(?:[^:]+:)?/, '')
+}
+
+function hintFor(ctx: RuleContext, changes: DiffChange[], locs: string[] = []): string | undefined {
   const names = new Set<string>()
+  // Also look one step downstream: what the changed locations feed in the current scan.
+  const bases = new Set(locs.map((l) => l.replace(/\.#preset$/, '').replace(/\.(pre|acc)$/, '')))
+  for (const [loc, v] of ctx.current.scan.cur) {
+    if (loc.includes('#')) continue
+    for (const b of bases) {
+      if (v.prov.has(`loc:${b}`) || v.prov.has(`loc:${b}.dn`) || v.prov.has(`loc:${b}.en`)) {
+        const label = ctx.current.scan.meta.get(loc)?.label
+        if (label && PROTECTIVE_NAME.test(label)) names.add(label)
+      }
+    }
+  }
   for (const c of changes) {
     for (const text of [c.before, c.after]) {
       if (!text) continue
@@ -88,8 +106,8 @@ export const UndeclaredSafetyCoverageRule: Rule = {
       const r = index.routines.get(rid)
       const where = r ? `${r.container.name}/${r.name}` : rid.replace(/^program:/, '')
       const locs = [...new Set(changes.flatMap((c) => undeclaredLocs(ctx, c)))]
-      const labels = locs.map((l) => ctx.current.scan.meta.get(l)?.label ?? ctx.baseline.scan.meta.get(l)?.label ?? l.replace(/^[cp]:/, ''))
-      const hint = hintFor(ctx, changes)
+      const labels = locs.map((l) => locLabel(ctx, l))
+      const hint = hintFor(ctx, changes, locs)
       const explanation = [
         'UNDECLARED: no safety intent has been declared for this logic.',
         'INTERLOCK therefore cannot conclude that it is safe.',
@@ -309,7 +327,9 @@ export const DeclarationResolutionRule: Rule = {
         summary: incomplete
           ? 'The declaration names no protective output and no alarm.'
           : undecided
-            ? 'The firing-condition comparison exceeded the exhaustive-analysis bound and was not decided.'
+            ? a.notification && !a.notification.raw
+              ? 'The alarm uses an analog alarm instruction (ALMA), whose thresholds INTERLOCK does not analyze.'
+              : 'A comparison for this function was not decided (it exceeded the exhaustive-analysis bound or depends on constructs INTERLOCK does not model).'
             : `Declared ${unresolved.join(', ').replace('protectiveOutput', 'protective output')} not found in the current project.`,
         explanation: [...a.notes, 'INTERLOCK does not treat an unanalyzed function as unchanged. Until the declaration resolves, this function is outside verified scope.'],
         impact: ['Coverage is partial: this function was not analyzed.'],
