@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!DOCTYPE RSLogix5000Content [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="35.00" TargetName="NORTHGATE_PS" TargetType="Controller" ContainsContext="false" ExportDate="Wed Sep 30 14:12:09 2026">
+<Controller Use="Target" Name="NORTHGATE_PS" ProcessorType="1756-L83E" MajorRev="35" MinorRev="11">
+<Tags>
+<Tag Name="MCC_Main_Enable" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read Only">
+<Description>
+<![CDATA[&xxe;]]>
+</Description>
+<Data Format="L5K">
+<![CDATA[0]]>
+</Data>
+</Tag>
+</Tags>
+<Programs>
+</Programs>
+<Tasks>
+<Task Name="MainTask" Type="CONTINUOUS" Priority="10" Watchdog="500">
+<ScheduledPrograms>
+<ScheduledProgram Name="Safety"/>
+</ScheduledPrograms>
+</Task>
+</Tasks>
+</Controller>
+</RSLogix5000Content>
