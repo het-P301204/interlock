@@ -9,7 +9,7 @@ import type { ReactNode } from 'react'
 import type { Finding, SafetyFunctionResult } from '@interlock/core/types'
 import { cx } from '../../lib/cx.ts'
 import { Badge, SeverityBadge, StatusPill } from '../../ui/Badge.tsx'
-import { DISPOSITION_LABEL, FINDING_TYPE_LABEL, NOTIFICATION_LABEL, NOTIFICATION_TONE, UNDECLARED_COPY, locationLabel } from './meta.ts'
+import { DISPOSITION_LABEL, FINDING_TYPE_LABEL, NOTIFICATION_LABEL, NOTIFICATION_TONE, UNDECLARED_COPY } from './meta.ts'
 
 const RAIL: Record<Finding['severity'], string> = {
   CRITICAL: 'bg-coral',
@@ -30,7 +30,6 @@ function Fact({ label, children, className }: { label: string; children: ReactNo
 
 export function FindingCard({ finding: f, sfs }: { finding: Finding; sfs: Map<string, SafetyFunctionResult> }) {
   const undeclared = f.disposition === 'UNDECLARED'
-  const where = locationLabel(f)
   return (
     <article
       aria-labelledby={`f-${f.id}`}
@@ -92,7 +91,7 @@ export function FindingCard({ finding: f, sfs }: { finding: Finding; sfs: Map<st
                 <span className="font-semibold">{f.blastRadius.instances}</span> instances · <span className="font-semibold">{f.blastRadius.safetyRelevant}</span> safety
               </span>
             ) : (
-              <span className="font-mono text-data text-ink-2">{where || '—'}</span>
+              <span className="text-ink-2">Single site</span>
             )}
           </Fact>
           <Fact label="Notification">

@@ -124,7 +124,19 @@ export function buildFindings(effects: Effect[], ctx: RuleContext, meta: Finding
       if (idx >= 0) impact[idx] = line
       else impact.push(line)
     }
-    const module = primary.module ?? list.find((e) => e.module)?.module
+    // Name a module only when the finding is about it: a change inside its
+    // definition, or a module-level rule. A function implemented by an AOI is
+    // not "affected via the AOI" when the change was elsewhere.
+    const touchesModule = (name: string) =>
+      changeIds.some((id) => {
+        const c = ctx.changeById.get(id)
+        if (!c) return false
+        const k = name.toLowerCase()
+        return (c.entity.routineId ?? '').toLowerCase().startsWith(`module:${k}/`) || ((c.entity.type === 'module' || c.entity.type === 'module-parameter') && (c.entity.container ?? c.entity.name).toLowerCase() === k)
+      })
+    const candidate = primary.module ?? list.find((e) => e.module)?.module
+    const moduleLevel = primary.type === 'SHARED_MODULE_PROPAGATION' || primary.type === 'MODULE_REVISION_NOT_BUMPED'
+    const module = candidate && (moduleLevel || touchesModule(candidate)) ? candidate : undefined
     let blastRadius = primary.blastRadius
     if (!blastRadius && module) {
       const m = ctx.modules.find((x) => x.name.toLowerCase() === module.toLowerCase())
